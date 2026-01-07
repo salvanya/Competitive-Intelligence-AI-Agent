@@ -1,5 +1,5 @@
 """
-Phase 1 Verification: LCEL Hello World (Fixed Model Name)
+Phase 1 Verification: LCEL Hello World (Gemini 2.5 Flash - Free Tier)
 Tests: API connectivity, runnable chains, streaming
 """
 import os
@@ -18,12 +18,15 @@ if not api_key:
 
 print(f"✅ API Key loaded: {api_key[:10]}...{api_key[-4:]}\n")
 
-# Step 1: Initialize Gemini with CORRECT model name
+# Step 1: Initialize Gemini 2.5 Flash (Free Tier Available)
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-pro-latest",  # ✅ Fixed: Use -latest suffix
+    model="models/gemini-2.5-flash",  # ✅ Flash has generous free tier
     temperature=0,  # Deterministic for testing
     max_tokens=256,
 )
+
+print(f"✅ Using model: models/gemini-2.5-flash")
+print(f"   (Fast, efficient, and generous free tier limits)\n")
 
 # Step 2: Create a prompt template
 prompt = ChatPromptTemplate.from_messages([
@@ -39,21 +42,24 @@ if __name__ == "__main__":
     print("🧪 Testing LCEL Chain...\n")
     
     try:
-        response = chain.invoke({"question": "What is LangChain?"})
+        response = chain.invoke({"question": "What is LangChain in one sentence?"})
         print(f"✅ Response: {response}\n")
         
         # Test streaming (critical for UX in later phases)
         print("🌊 Testing Streaming...\n")
-        for chunk in chain.stream({"question": "Count from 1 to 5"}):
+        print("Output: ", end="")
+        for chunk in chain.stream({"question": "Count from 1 to 5, separated by commas"}):
             print(chunk, end="", flush=True)
         
         print("\n\n" + "="*60)
         print("✅ Phase 1 Complete: Environment verified!")
         print("="*60)
+        print("✅ Model: Gemini 2.5 Flash (Free Tier)")
         print("✅ LCEL chains working correctly")
         print("✅ Streaming working correctly")
         print("✅ Gemini API connected successfully")
-        print("✅ Ready for Phase 2: LLM Fundamentals\n")
+        print("✅ Ready for Phase 2: LLM Fundamentals")
+        print("="*60)
         
     except Exception as e:
         print(f"❌ Error occurred: {type(e).__name__}")
