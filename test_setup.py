@@ -1,7 +1,3 @@
-"""
-Phase 1 Verification: LCEL Hello World (Gemini 2.5 Flash - Free Tier)
-Tests: API connectivity, runnable chains, streaming
-"""
 import os
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -14,24 +10,37 @@ load_dotenv()
 # Verify API key loaded
 api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
-    raise ValueError("❌ GOOGLE_API_KEY not found in .env file!")
+    raise ValueError("❌ GOOGLE_API_KEY not found in .env file")
 
 print(f"✅ API Key loaded: {api_key[:10]}...{api_key[-4:]}\n")
 
-# Step 1: Initialize Gemini 2.5 Flash (Free Tier Available)
+# Step 1: Initialize Gemini 2.5 Flash
 llm = ChatGoogleGenerativeAI(
-    model="models/gemini-2.5-flash",  # ✅ Flash has generous free tier
+    model="models/gemini-2.5-flash", 
     temperature=0,  # Deterministic for testing
+    # top_p=0.9, # Filters unlikely words
+    # top_k=40, # Only considers the 40 best options per word
     max_tokens=256,
 )
 
 print(f"✅ Using model: models/gemini-2.5-flash")
-print(f"   (Fast, efficient, and generous free tier limits)\n")
 
 # Step 2: Create a prompt template
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are a helpful assistant. Respond concisely."),
-    ("human", "{question}")
+    # SYSTEM: Defines the behavior, tone, and limits of the model.
+    ("system", "You are a helpful assistant. Respond concisely."), 
+    
+    # HUMAN: Represents user input.
+    # ("human", "Help me with this task."),
+
+    # AI: Used for "few-shot prompting" or to preload a previous AI response.
+    # ("ai", "I'm here to help you with any task you need."),
+    
+    # Placeholder for history (useful in agents with memory)
+    # ("placeholder", "{chat_history}")
+    
+    # HUMAN: The main user query with a variable.
+    ("human", "{question}") 
 ])
 
 # Step 3: Build LCEL chain using pipe operator
@@ -39,26 +48,25 @@ chain = prompt | llm | StrOutputParser()
 
 # Step 4: Test synchronous invocation
 if __name__ == "__main__":
-    print("🧪 Testing LCEL Chain...\n")
+    print("Testing LCEL Chain...\n")
     
     try:
         response = chain.invoke({"question": "What is LangChain in one sentence?"})
         print(f"✅ Response: {response}\n")
         
-        # Test streaming (critical for UX in later phases)
-        print("🌊 Testing Streaming...\n")
+        # Test streaming
+        print("Testing Streaming...\n")
         print("Output: ", end="")
         for chunk in chain.stream({"question": "Count from 1 to 5, separated by commas"}):
             print(chunk, end="", flush=True)
         
         print("\n\n" + "="*60)
-        print("✅ Phase 1 Complete: Environment verified!")
+        print("✅ Phase 1 Complete: Environment verified")
         print("="*60)
-        print("✅ Model: Gemini 2.5 Flash (Free Tier)")
+        print("✅ Model: Gemini 2.5 Flash")
         print("✅ LCEL chains working correctly")
         print("✅ Streaming working correctly")
         print("✅ Gemini API connected successfully")
-        print("✅ Ready for Phase 2: LLM Fundamentals")
         print("="*60)
         
     except Exception as e:
