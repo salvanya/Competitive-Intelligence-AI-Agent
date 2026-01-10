@@ -80,7 +80,7 @@ def demonstrate_streaming():
     print(f"💡 User saw first token in ~1-2s vs waiting {elapsed:.2f}s")
 
 
-def demonstrate_streaming_with_callback():
+def demonstrate_streaming_with_inline_processing():
     """
     Advanced: Stream with processing (e.g., save to DB, update UI)
     """
@@ -97,6 +97,7 @@ def demonstrate_streaming_with_callback():
         chunks.append(chunk)
         
         # Simulate real-time processing (e.g., updating database)
+        # Auto-save: Save progress every 10  chunks
         if i % 10 == 0 and i > 0:
             print(f" [checkpoint: {len(''.join(chunks))} chars saved]", end="")
     
@@ -124,7 +125,7 @@ if __name__ == "__main__":
         time.sleep(3)
         
         # Experiment 3: Streaming with processing
-        demonstrate_streaming_with_callback()
+        demonstrate_streaming_with_inline_processing()
         
         print("\n" + "="*70)
         print("✅ Streaming Experiment Complete!")
@@ -133,7 +134,6 @@ if __name__ == "__main__":
         print("   1. Batch: Simple but poor UX for long responses")
         print("   2. Streaming: Better UX, users see progress immediately")
         print("   3. Production: Always use streaming for synthesis (>5s)")
-        print("\n💡 Next: Phase 2.3 - Context Window Management")
         
     except Exception as e:
         print(f"\n❌ Error: {type(e).__name__}: {str(e)}")
