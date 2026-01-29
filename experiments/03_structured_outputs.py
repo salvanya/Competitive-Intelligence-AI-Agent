@@ -125,7 +125,7 @@ def create_extraction_chain_v1_basic():
     Reliability: Moderate (LLM might produce invalid JSON)
     """
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash-lite",
+        model="gemini-2.0-flash-lite",
         temperature=0.0,  # Deterministic
         max_tokens=1000,
     )
@@ -160,7 +160,7 @@ def create_extraction_chain_v2_json_mode():
     """
 
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash-lite",
+        model="gemini-2.0-flash-lite",
         temperature=0.0,
         max_tokens=1000,
     

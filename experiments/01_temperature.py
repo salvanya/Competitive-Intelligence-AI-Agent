@@ -13,7 +13,7 @@ from google.api_core.exceptions import ResourceExhausted
 
 load_dotenv()
 
-def create_chain(temperature: float, model: str = "models/gemini-2.5-flash-lite"):
+def create_chain(temperature: float, model: str = "models/flash-lite"):
     """
     Factory function for creating LCEL chains with different temperatures.
     

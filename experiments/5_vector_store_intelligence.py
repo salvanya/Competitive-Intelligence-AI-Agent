@@ -41,7 +41,7 @@ load_dotenv()
 # ============================================================================
 
 class Config:
-    GEMINI_MODEL = "gemini-2.0-flash-lite"
+    GEMINI_MODEL = "gemini-1.5-flash-latest"
     EMBEDDING_MODEL = "models/text-embedding-004"  # Working Gemini embedding
     EXTRACTION_TEMPERATURE = 0
     SYNTHESIS_TEMPERATURE = 0.7
@@ -365,7 +365,6 @@ async def test_vector_store_pipeline():
     print("=" * 80)
     
     # Sample competitor data (simulates Firecrawl output)
-    # Reduced to 3 competitors to stay under Gemini free tier quota
     competitors_data = [
         {
             "url": "https://datastream-analytics.com",
@@ -410,6 +409,36 @@ async def test_vector_store_pipeline():
             Pricing: Basic $49/mo, Pro $199/mo, Enterprise Custom
             
             Technology: Simple setup, No credit card trial
+            """
+        },
+        {
+            "url": "https://analyticsengine.co",
+            "content": """
+            Analytics Engine - Enterprise Data Platform
+            
+            Built for large enterprises (1000+ employees) with complex data needs.
+            
+            Features: Advanced SQL engine, Multi-tenant architecture,
+            Custom data pipelines, Dedicated support, On-premise deployment
+            
+            Pricing: Enterprise only - Contact for quote
+            
+            Technology: Hadoop, Spark, Kubernetes, FedRAMP certified
+            """
+        },
+        {
+            "url": "https://quickdash.io",
+            "content": """
+            QuickDash - Instant Analytics
+            
+            For SMBs (5-50 employees) who need analytics fast.
+            
+            Features: Pre-built templates, Drag-and-drop builder,
+            1-click integrations, Mobile app, Basic alerts
+            
+            Pricing: Starter $29/mo, Business $99/mo
+            
+            Technology: Cloud-based, Quick setup
             """
         }
     ]

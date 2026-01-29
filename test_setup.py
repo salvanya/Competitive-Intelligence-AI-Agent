@@ -16,14 +16,14 @@ print(f"✅ API Key loaded: {api_key[:10]}...{api_key[-4:]}\n")
 
 # Step 1: Initialize Gemini 2.5 Flash
 llm = ChatGoogleGenerativeAI(
-    model="models/gemini-2.5-flash-lite", 
+    model="models/gemini-2.0-flash-lite", 
     temperature=0,  # Deterministic for testing
     # top_p=0.9, # Filters unlikely words
     # top_k=40, # Only considers the 40 best options per word
     max_tokens=256,
 )
 
-print(f"✅ Using model: models/gemini-2.5-flash-lite")
+print(f"✅ Using model: models/gemini-2.0-flash-lite")
 
 # Step 2: Create a prompt template
 prompt = ChatPromptTemplate.from_messages([

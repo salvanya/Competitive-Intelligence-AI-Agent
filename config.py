@@ -5,8 +5,8 @@ Updated for Free Tier Compatibility
 """
 
 # Model Selection (Free Tier Optimized)
-EXTRACTION_MODEL = "models/gemini-2.5-flash"  # Fast, structured output
-SYNTHESIS_MODEL = "models/gemini-2.5-flash"    # Same model for synthesis
+EXTRACTION_MODEL = "models/gemini-2.0-flash-lite"  # Fast, structured output
+SYNTHESIS_MODEL = "models/gemini-2.0-flash-lite"    # Same model for synthesis
 EMBEDDING_MODEL = "models/text-embedding-004"  # For vector store (Phase 5)
 
 # LLM Parameters
