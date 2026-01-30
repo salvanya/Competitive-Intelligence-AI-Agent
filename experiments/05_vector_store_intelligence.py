@@ -41,7 +41,7 @@ load_dotenv()
 # ============================================================================
 
 class Config:
-    GEMINI_MODEL = "gemini-1.5-flash-latest"
+    GEMINI_MODEL = "gemini-2.5-flash-lite"  # Correct model name with version suffix
     EMBEDDING_MODEL = "models/text-embedding-004"  # Working Gemini embedding
     EXTRACTION_TEMPERATURE = 0
     SYNTHESIS_TEMPERATURE = 0.7
@@ -246,11 +246,12 @@ class CompetitorVectorStore:
         # Build metadata filter using Qdrant Filter model
         search_filter = None
         if filter_market:
+            # Use partial match to handle "Mid-market" matching "mid-market (10-500 employees)"
             search_filter = Filter(
                 must=[
                     FieldCondition(
                         key="target_market",
-                        match=MatchValue(value=filter_market)
+                        match=MatchValue(value=filter_market.lower())
                     )
                 ]
             )
@@ -283,9 +284,9 @@ class CompetitorVectorStore:
         
         return [
             {
-                "company": point.payload.get("metadata", {}).get("company_name", "Unknown"),
-                "target_market": point.payload.get("metadata", {}).get("target_market", "Unknown"),
-                "features": point.payload.get("metadata", {}).get("num_features", 0),
+                "company": point.payload.get("company_name", "Unknown"),
+                "target_market": point.payload.get("target_market", "Unknown"),
+                "features": point.payload.get("num_features", 0),
                 "id": str(point.id)
             }
             for point in results
@@ -365,6 +366,7 @@ async def test_vector_store_pipeline():
     print("=" * 80)
     
     # Sample competitor data (simulates Firecrawl output)
+    # Reduced to 3 competitors to stay under Gemini free tier quota
     competitors_data = [
         {
             "url": "https://datastream-analytics.com",
@@ -409,36 +411,6 @@ async def test_vector_store_pipeline():
             Pricing: Basic $49/mo, Pro $199/mo, Enterprise Custom
             
             Technology: Simple setup, No credit card trial
-            """
-        },
-        {
-            "url": "https://analyticsengine.co",
-            "content": """
-            Analytics Engine - Enterprise Data Platform
-            
-            Built for large enterprises (1000+ employees) with complex data needs.
-            
-            Features: Advanced SQL engine, Multi-tenant architecture,
-            Custom data pipelines, Dedicated support, On-premise deployment
-            
-            Pricing: Enterprise only - Contact for quote
-            
-            Technology: Hadoop, Spark, Kubernetes, FedRAMP certified
-            """
-        },
-        {
-            "url": "https://quickdash.io",
-            "content": """
-            QuickDash - Instant Analytics
-            
-            For SMBs (5-50 employees) who need analytics fast.
-            
-            Features: Pre-built templates, Drag-and-drop builder,
-            1-click integrations, Mobile app, Basic alerts
-            
-            Pricing: Starter $29/mo, Business $99/mo
-            
-            Technology: Cloud-based, Quick setup
             """
         }
     ]

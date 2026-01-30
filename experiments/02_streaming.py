@@ -17,7 +17,7 @@ def create_synthesis_chain(temperature: float = 0.7):
     Synthesis chain for competitive analysis (uses temp=0.7)
     """
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash-lite",
+        model="gemini-2.5-flash-lite",
         temperature=temperature,
         max_tokens=500,  # Longer output to see streaming effect
     )
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     print("🧪 Phase 2.2: Streaming vs Batch Experiment")
     print("="*70)
     print("🎯 Objective: Compare user experience between approaches")
-    print("⚡ Model:gemini-2.0-flash-lite (temp=0.7)")
+    print("⚡ Model:gemini-2.5-flash-lite (temp=0.7)")
     print("="*70)
     
     try:

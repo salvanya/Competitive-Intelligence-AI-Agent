@@ -41,7 +41,7 @@ load_dotenv()
 # ============================================================================
 
 class Config:
-    GEMINI_MODEL = "gemini-2.0-flash-lite"
+    GEMINI_MODEL = "gemini-2.5-flash-lite"
     EMBEDDING_MODEL = "models/text-embedding-004"  # Working Gemini embedding
     EXTRACTION_TEMPERATURE = 0
     SYNTHESIS_TEMPERATURE = 0.7
