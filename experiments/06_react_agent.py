@@ -249,36 +249,21 @@ class CompetitorVectorStore:
     async def search_similar(
         self, 
         query: str, 
-        k: int = 3,
+        k: int = 5,  # Default to 5 for better recall
         filter_market: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Semantic search for similar competitors"""
+        """
+        Semantic search for similar competitors.
         
-        # Get MORE results initially (k*3) to account for filtering
-        raw_k = k * 3
-        
-        # Perform similarity search WITHOUT filter first
+        Note: Market filtering is now handled at the tool level for better control.
+        """
+        # Perform vector similarity search
         results = await self.vectorstore.asimilarity_search_with_score(
             query, 
-            k=raw_k
+            k=k
         )
         
-        print(f"   🔍 Similarity scores (all results):")
-        for doc, score in results:
-            print(f"      {doc.metadata['company_name']}: {score:.3f}")
-        
-        # Post-filter by market segment if provided
-        if filter_market:
-            filtered_results = [
-                (doc, score) for doc, score in results
-                if filter_market.lower() in doc.metadata.get("target_market", "").lower()
-            ]
-            print(f"   🔍 After market filter: {len(filtered_results)} results")
-            results = filtered_results[:k]
-        else:
-            results = results[:k]
-        
-        # Convert to dict format
+        # Convert to standardized dict format
         return [
             {
                 "company": doc.metadata["company_name"],
@@ -313,8 +298,8 @@ async def search_competitors_tool(query: str, market_segment: str = "", k: int =
     Search for competitors using semantic similarity.
     
     Args:
-        query: Search query (use descriptive terms)
-        market_segment: Optional market filter
+        query: Search query describing the product category
+        market_segment: Optional context (informational only, doesn't filter)
         k: Number of results to return
     
     Returns:
@@ -322,66 +307,82 @@ async def search_competitors_tool(query: str, market_segment: str = "", k: int =
     """
     store = get_vectorstore()
     
-    # DEBUG LOGGING
-    print(f"\n🔍 DEBUG search_competitors_tool:")
-    print(f"   Original query: '{query}'")
-    print(f"   Market segment: '{market_segment}'")
-    
-    # Enhance query for better semantic matching
-    enhanced_query = query
-    if any(word in query.lower() for word in ['datastream', 'cloudmetrics', 'insighthub']):
-        enhanced_query = "analytics platform business intelligence dashboards"
-    
-    if market_segment:
-        enhanced_query = f"{enhanced_query} {market_segment}"
-    
-    filter_market = market_segment if market_segment else None
+    print(f"\n🔍 SEARCH_COMPETITORS_TOOL:")
+    print(f"   Query: '{query}'")
+    print(f"   Market context: '{market_segment}' (informational)")
     
     try:
-        results = await store.search_similar(
-            query=enhanced_query,
-            k=min(k, 10), 
-            filter_market=filter_market
+        # Get k+1 results to exclude the queried company if it appears
+        search_k = k + 2  # Buffer for self-matches
+        
+        # Perform semantic search WITHOUT market filtering
+        # Rationale: Competitors often serve adjacent markets
+        all_results = await store.search_similar(
+            query=query,
+            k=search_k,
+            filter_market=None  # Don't filter - let semantic similarity decide
         )
         
-        # CRITICAL: Validate against known companies
-        KNOWN_COMPANIES = {"DataStream Analytics", "CloudMetrics", "InsightHub"}
+        print(f"   Raw results: {len(all_results)} companies found")
+        for r in all_results:
+            print(f"      {r['company']} (score: {r['similarity_score']:.3f})")
         
-        print(f"   Raw results count: {len(results)}")
-        print(f"   Raw results: {[r['company'] for r in results]}")
+        if not all_results:
+            return (
+                f"⚠️ NO COMPETITORS FOUND\n\n"
+                f"Search query: '{query}'\n"
+                f"Searched the entire database but found no matches.\n\n"
+                f"**Suggestion**: Try different descriptive terms for the product category."
+            )
         
-        # Filter to only known companies
-        validated_results = [
-            comp for comp in results 
-            if comp['company'] in KNOWN_COMPANIES
+        # Exclude companies that match the query (self-references)
+        filtered_results = [
+            comp for comp in all_results
+            if not _should_exclude_company(comp['company'], query)
         ]
+
+        # Take top k from filtered results
+        final_results = filtered_results[:k]
         
-        print(f"   Validated results: {[r['company'] for r in validated_results]}")
+        # Format results with market context
+        output = f"**Competitor Search Results**\n\n"
+        output += f"Query: \"{query}\"\n"
+        if market_segment:
+            output += f"Context: {market_segment} segment (showing all competitors including adjacent markets)\n"
+        output += f"\nFound {len(final_results)} competitors:\n\n"
         
-        if not validated_results:
-            return (f"⚠️ NO RESULTS FOUND\n\n"
-                   f"Query: '{query}'\n"
-                   f"Enhanced query: '{enhanced_query}'\n"
-                   f"Known companies in database: {', '.join(KNOWN_COMPANIES)}\n\n"
-                   f"INSTRUCTION: The search returned no matches. "
-                   f"Try a different descriptive query or acknowledge no competitors found.")
-        
-        # Format ONLY validated results
-        output = f"**Search Results** (query: '{enhanced_query}')\n"
-        output += f"Found {len(validated_results)} competitors:\n\n"
-        
-        for i, comp in enumerate(validated_results, 1):
-            output += f"{i}. **{comp['company']}** [VERIFIED IN DATABASE]\n"
-            output += f"   - Similarity: {comp['similarity_score']:.2f}\n"
-            output += f"   - Market: {comp['target_market']}\n"
+        for i, comp in enumerate(final_results, 1):
+            output += f"**{i}. {comp['company']}**\n"
+            output += f"   - Similarity Score: {comp['similarity_score']:.3f}\n"
+            output += f"   - Target Market: {comp['target_market']}\n"
             output += f"   - Website: {comp['website']}\n"
-            output += f"   - Preview: {comp['content_preview'][:120]}...\n\n"
+            output += f"   - Key Info: {comp['content_preview'][:180]}...\n\n"
+        
+        # Add interpretive note
+        output += "**Note**: Results include competitors across all market segments. "
+        output += "Companies may serve adjacent markets (e.g., enterprise, mid-market, SMB) "
+        output += "while still competing on features, pricing, or positioning.\n"
         
         return output
         
     except Exception as e:
-        return f"❌ Error searching: {str(e)}"
+        return f"❌ Search error: {str(e)}"
 
+def _should_exclude_company(company_name: str, query: str) -> bool:
+    """
+    Determine if a company should be excluded from competitor search results.
+    Returns True if the company name appears in the search query.
+    """
+    query_lower = query.lower()
+    company_lower = company_name.lower()
+    
+    # Check for exact match or close variants
+    company_tokens = company_lower.split()
+    for token in company_tokens:
+        if len(token) > 3 and token in query_lower:
+            return True
+    
+    return False
 
 async def compare_pricing_tool(companies: str) -> str:
     """
@@ -544,17 +545,19 @@ class SimpleReActAgent:
 Available Tools:
 
 1. search_competitors(query: str, market_segment: str = "", k: int = 3)
-   - Find competitors using semantic search
-   - IMPORTANT: Use BROAD, SEMANTIC queries
-   - Good examples:
-     * "analytics platform" 
-     * "business intelligence dashboards"
-     * "data visualization tools"
-   - Bad examples:
-     * "real-time data analytics" (too specific)
-     * "DataStream Analytics" (company name)
-   - Use when: discovering competitors, finding similar companies
-   
+   - Find competitors using semantic similarity
+   - Strategy: Describe the PRODUCT CATEGORY, not a specific company
+   - Good queries:
+     * "business analytics platform"
+     * "data visualization and reporting tool"
+     * "business intelligence dashboard software"
+   - market_segment parameter: Provides context but doesn't filter results
+     * Use when relevant: "mid-market", "enterprise", "SMB"
+     * Tool returns competitors across ALL markets for comprehensive view
+   - Returns: Ranked list of competitors with similarity scores and market positioning
+   - IMPORTANT: Results may include companies serving adjacent markets (enterprise competitors 
+     can still compete with mid-market solutions on features/pricing)
+
 2. compare_pricing(companies: str)
    - Compare pricing strategies across competitors
    - Use when: analyzing pricing, finding pricing gaps
