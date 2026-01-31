@@ -41,7 +41,7 @@ load_dotenv()
 # ============================================================================
 
 class Config:
-    GEMINI_MODEL = "gemini-2.5-flash-lite"
+    GEMINI_MODEL = "gemini-2.5-flash-lite"  # Correct model name with version suffix
     EMBEDDING_MODEL = "models/text-embedding-004"  # Working Gemini embedding
     EXTRACTION_TEMPERATURE = 0
     SYNTHESIS_TEMPERATURE = 0.7
@@ -246,11 +246,12 @@ class CompetitorVectorStore:
         # Build metadata filter using Qdrant Filter model
         search_filter = None
         if filter_market:
+            # Use partial match to handle "Mid-market" matching "mid-market (10-500 employees)"
             search_filter = Filter(
                 must=[
                     FieldCondition(
                         key="target_market",
-                        match=MatchValue(value=filter_market)
+                        match=MatchValue(value=filter_market.lower())
                     )
                 ]
             )
@@ -283,9 +284,9 @@ class CompetitorVectorStore:
         
         return [
             {
-                "company": point.payload.get("metadata", {}).get("company_name", "Unknown"),
-                "target_market": point.payload.get("metadata", {}).get("target_market", "Unknown"),
-                "features": point.payload.get("metadata", {}).get("num_features", 0),
+                "company": point.payload.get("company_name", "Unknown"),
+                "target_market": point.payload.get("target_market", "Unknown"),
+                "features": point.payload.get("num_features", 0),
                 "id": str(point.id)
             }
             for point in results
