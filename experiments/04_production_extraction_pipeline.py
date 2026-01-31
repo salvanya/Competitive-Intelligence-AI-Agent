@@ -39,7 +39,7 @@ load_dotenv()
 
 class Config:
     """Centralized configuration for production settings"""
-    GEMINI_MODEL = "gemini-2.0-flash-lite"
+    GEMINI_MODEL = "gemini-2.0-flash"
     EXTRACTION_TEMPERATURE = 0  # Deterministic
     SYNTHESIS_TEMPERATURE = 0.7  # Creative
     MAX_TOKENS = 2048
@@ -477,7 +477,7 @@ async def test_production_pipeline():
     print("🚀 PRODUCTION EXTRACTION PIPELINE TEST")
     print("=" * 80)
     
-    # Sample competitor data (simulates Firecrawl output)
+    # Sample competitor data
     competitor_data = [
         """
         DataStream Analytics - Real-time Business Intelligence

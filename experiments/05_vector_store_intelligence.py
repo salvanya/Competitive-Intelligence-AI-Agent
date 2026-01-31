@@ -41,7 +41,7 @@ load_dotenv()
 # ============================================================================
 
 class Config:
-    GEMINI_MODEL = "gemini-2.0-flash-lite"  # Correct model name with version suffix
+    GEMINI_MODEL = "gemini-2.0-flash"  # Correct model name with version suffix
     EMBEDDING_MODEL = "models/text-embedding-004"  # Working Gemini embedding
     EXTRACTION_TEMPERATURE = 0
     SYNTHESIS_TEMPERATURE = 0.7
@@ -365,7 +365,7 @@ async def test_vector_store_pipeline():
     print("🚀 PHASE 5: VECTOR STORE + COMPETITIVE INTELLIGENCE")
     print("=" * 80)
     
-    # Sample competitor data (simulates Firecrawl output)
+    # Sample competitor data
     # Reduced to 3 competitors to stay under Gemini free tier quota
     competitors_data = [
         {

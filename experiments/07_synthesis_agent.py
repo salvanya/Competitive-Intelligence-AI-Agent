@@ -50,7 +50,7 @@ load_dotenv()
 # ============================================================================
 
 class Config:
-    GEMINI_MODEL = "gemini-2.0-flash-lite"
+    GEMINI_MODEL = "gemini-2.0-flash"
     EMBEDDING_MODEL = "models/text-embedding-004"
     SYNTHESIS_TEMPERATURE = 0.7  # Creative but grounded
     MAX_TOKENS = 4096  # Longer reports
