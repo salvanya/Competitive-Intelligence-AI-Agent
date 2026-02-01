@@ -400,6 +400,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **⭐ If you find this project useful, please give it a star!**
 Terminal Instructions:
 bash# No installation needed - just save the file
-
-# Optional: Add a LICENSE file
-# MIT License is recommended for open source projects
