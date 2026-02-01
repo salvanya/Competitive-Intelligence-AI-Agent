@@ -1,42 +1,42 @@
 """
 Tools for ReAct Agent
-Implements competitive intelligence analysis tools for agent reasoning
+Implements AI news analysis tools for agent reasoning
 """
 
 from typing import List, Dict, Any, Optional
-from app.extraction.schemas import CompetitorProfile, PricingTier
-from app.vectorstore.store import CompetitorVectorStore
+from app.extraction.schemas import NewsArticleProfile, ImpactLevel
+from app.vectorstore.store import NewsVectorStore
 
 
-class CompetitorTools:
+class NewsAnalysisTools:
     """
-    Tools for competitive intelligence reasoning and analysis.
+    Tools for AI news intelligence reasoning and analysis.
     
     Provides a suite of specialized tools that the ReAct agent can use
-    to analyze competitor data, compare features, identify gaps, and
-    generate insights.
+    to analyze news articles, identify trends, assess impact, and
+    generate prioritized insights.
     
     Attributes:
         vectorstore: Vector store for semantic search
-        profiles: List of all competitor profiles
+        profiles: List of all news article profiles
     
     Example:
-        >>> tools = CompetitorTools(vectorstore, profiles)
-        >>> result = await tools.search_competitors("enterprise SaaS pricing")
+        >>> tools = NewsAnalysisTools(vectorstore, profiles)
+        >>> result = await tools.search_articles("GPT-5 reasoning capabilities")
         >>> print(result)
     """
     
     def __init__(
         self, 
-        vectorstore: CompetitorVectorStore,
-        profiles: List[CompetitorProfile]
+        vectorstore: NewsVectorStore,
+        profiles: List[NewsArticleProfile]
     ):
         """
-        Initialize competitor tools.
+        Initialize news analysis tools.
         
         Args:
-            vectorstore: Initialized vector store with ingested profiles
-            profiles: List of all competitor profiles
+            vectorstore: Initialized vector store with ingested articles
+            profiles: List of all news article profiles
         """
         self.vectorstore = vectorstore
         self.profiles = profiles
@@ -46,22 +46,22 @@ class CompetitorTools:
             p for p in profiles if p.scrape_success
         ]
     
-    async def search_competitors(self, query: str, k: int = 3) -> str:
+    async def search_articles(self, query: str, k: int = 3) -> str:
         """
-        Search for competitors matching a semantic query.
+        Search for news articles matching a semantic query.
         
-        Uses vector search to find competitors most relevant to the query.
+        Uses vector search to find articles most relevant to the query.
         Returns a formatted string suitable for LLM consumption.
         
         Args:
-            query: Semantic search query (e.g., "enterprise pricing models")
+            query: Semantic search query (e.g., "LLM reasoning improvements")
             k: Number of results to return (default: 3)
         
         Returns:
             str: Formatted search results
         
         Example:
-            >>> result = await tools.search_competitors("AI-powered features", k=2)
+            >>> result = await tools.search_articles("multimodal AI", k=2)
         """
         if not query or not query.strip():
             return "Error: Query cannot be empty"
@@ -69,276 +69,336 @@ class CompetitorTools:
         results = await self.vectorstore.search_similar(query, k=k)
         
         if not results:
-            return f"No competitors found matching query: '{query}'"
+            return f"No articles found matching query: '{query}'"
         
-        output = [f"**Found {len(results)} competitor(s) matching '{query}':**\n"]
+        output = [f"**Found {len(results)} article(s) matching '{query}':**\n"]
         
         for i, result in enumerate(results, 1):
-            output.append(f"{i}. **{result['company']}** (Similarity: {result['similarity_score']:.3f})")
-            output.append(f"   URL: {result['website_url']}")
-            output.append(f"   Target Market: {result['target_market']}")
-            output.append(f"   Features: {result['num_features']}")
+            output.append(f"{i}. **{result['headline']}**")
+            output.append(f"   Source: {result['news_source']}")
+            output.append(f"   URL: {result['article_url']}")
+            output.append(f"   Date: {result['publication_date']}")
+            output.append(f"   Similarity: {result['similarity_score']:.3f}")
+            output.append(f"   Impact: {result['potential_impact']}")
+            output.append(f"   Relevance: {result['relevance_score']:.2f}")
+            output.append(f"   Priority: {result['recommended_priority']}")
             
             # Include snippet of content
-            content_preview = result['content'][:300].replace('\n', ' ')
+            content_preview = result['content'][:250].replace('\n', ' ')
             output.append(f"   Preview: {content_preview}...")
             output.append("")
         
         return "\n".join(output)
     
-    def compare_pricing(self, companies: Optional[List[str]] = None) -> str:
+    def analyze_relevance(self) -> str:
         """
-        Compare pricing strategies across competitors.
+        Analyze relevance scores across all articles.
         
-        Analyzes pricing tiers, identifies patterns, and highlights differences.
-        
-        Args:
-            companies: Optional list of company names to compare
-                      (if None, compares all valid profiles)
+        Provides statistical analysis of article relevance and
+        identifies highly relevant developments.
         
         Returns:
-            str: Formatted pricing comparison analysis
+            str: Formatted relevance analysis
         
         Example:
-            >>> result = tools.compare_pricing(["Acme Corp", "TechCo"])
+            >>> result = tools.analyze_relevance()
         """
-        # Filter profiles if specific companies requested
-        if companies:
-            profiles_to_compare = [
-                p for p in self.valid_profiles 
-                if p.company_name in companies
-            ]
-        else:
-            profiles_to_compare = self.valid_profiles
+        if not self.valid_profiles:
+            return "No valid articles available for relevance analysis"
         
-        if not profiles_to_compare:
-            return "No valid profiles available for pricing comparison"
+        output = ["**Relevance Score Analysis:**\n"]
         
-        output = ["**Pricing Strategy Comparison:**\n"]
+        # Filter articles with relevance scores
+        scored_articles = [
+            p for p in self.valid_profiles 
+            if p.relevance_score is not None
+        ]
         
-        for profile in profiles_to_compare:
-            output.append(f"**{profile.company_name}**")
-            
-            if not profile.pricing_tiers:
-                output.append("  - No pricing information available")
-            else:
-                output.append(f"  - Number of tiers: {len(profile.pricing_tiers)}")
-                
-                for tier in profile.pricing_tiers:
-                    tier_info = f"  - {tier.name}: {tier.price or 'N/A'}"
-                    if tier.features:
-                        tier_info += f" ({len(tier.features)} features)"
-                    output.append(tier_info)
-            
+        if not scored_articles:
+            return "No articles have relevance scores assigned"
+        
+        # Calculate statistics
+        scores = [p.relevance_score for p in scored_articles]
+        avg_score = sum(scores) / len(scores)
+        max_score = max(scores)
+        min_score = min(scores)
+        
+        output.append(f"**Overall Statistics:**")
+        output.append(f"- Total articles analyzed: {len(scored_articles)}")
+        output.append(f"- Average relevance: {avg_score:.2f}")
+        output.append(f"- Highest relevance: {max_score:.2f}")
+        output.append(f"- Lowest relevance: {min_score:.2f}")
+        output.append("")
+        
+        # High relevance articles (>= 0.7)
+        high_relevance = [p for p in scored_articles if p.relevance_score >= 0.7]
+        if high_relevance:
+            output.append(f"**High Relevance Articles** (score ≥ 0.7): {len(high_relevance)}")
+            for article in sorted(high_relevance, key=lambda x: x.relevance_score, reverse=True)[:5]:
+                output.append(f"- {article.headline} ({article.relevance_score:.2f})")
             output.append("")
         
-        # Analysis section
-        output.append("**Pricing Insights:**")
+        # Medium relevance (0.4 - 0.69)
+        medium_relevance = [p for p in scored_articles if 0.4 <= p.relevance_score < 0.7]
+        if medium_relevance:
+            output.append(f"**Medium Relevance Articles** (0.4-0.69): {len(medium_relevance)}")
+            output.append("")
         
-        # Count tiers across all competitors
-        tier_counts = [len(p.pricing_tiers) for p in profiles_to_compare if p.pricing_tiers]
-        if tier_counts:
-            avg_tiers = sum(tier_counts) / len(tier_counts)
-            output.append(f"- Average tiers per competitor: {avg_tiers:.1f}")
-        
-        # Identify "Contact Sales" models
-        contact_sales_count = sum(
-            1 for p in profiles_to_compare 
-            for tier in p.pricing_tiers 
-            if tier.price and "Contact Sales" in tier.price
-        )
-        if contact_sales_count > 0:
-            output.append(f"- {contact_sales_count} tier(s) use custom/enterprise pricing")
+        # Low relevance (< 0.4)
+        low_relevance = [p for p in scored_articles if p.relevance_score < 0.4]
+        if low_relevance:
+            output.append(f"**Low Relevance Articles** (< 0.4): {len(low_relevance)}")
         
         return "\n".join(output)
     
-    def identify_feature_gaps(self, reference_company: Optional[str] = None) -> str:
+    def identify_technology_trends(self) -> str:
         """
-        Identify feature gaps and unique offerings across competitors.
+        Identify emerging technology trends across articles.
         
-        Analyzes which features are common vs. unique, and identifies
-        potential market gaps.
-        
-        Args:
-            reference_company: Optional company to use as reference point
+        Analyzes which technologies are most frequently mentioned
+        and identifies emerging patterns.
         
         Returns:
-            str: Formatted feature gap analysis
+            str: Formatted technology trend analysis
         
         Example:
-            >>> result = tools.identify_feature_gaps("Acme Corp")
+            >>> result = tools.identify_technology_trends()
         """
         if not self.valid_profiles:
-            return "No valid profiles available for feature analysis"
+            return "No valid articles available for technology analysis"
         
-        output = ["**Feature Gap Analysis:**\n"]
-        
-        # Collect all features across competitors
-        all_features = {}
-        for profile in self.valid_profiles:
-            for feature in profile.key_features:
-                feature_lower = feature.lower()
-                if feature_lower not in all_features:
-                    all_features[feature_lower] = {
-                        "original": feature,
-                        "companies": []
-                    }
-                all_features[feature_lower]["companies"].append(profile.company_name)
-        
-        # Identify common features (in >50% of competitors)
-        threshold = len(self.valid_profiles) / 2
-        common_features = {
-            k: v for k, v in all_features.items() 
-            if len(v["companies"]) >= threshold
-        }
-        
-        # Identify unique features (only 1 competitor)
-        unique_features = {
-            k: v for k, v in all_features.items() 
-            if len(v["companies"]) == 1
-        }
-        
-        # Common features
-        if common_features:
-            output.append(f"**Common Features** (in ≥{int(threshold)} competitor(s)):")
-            for feature, data in sorted(common_features.items(), 
-                                       key=lambda x: len(x[1]["companies"]), 
-                                       reverse=True):
-                output.append(f"- {data['original']} ({len(data['companies'])} competitors)")
-            output.append("")
-        
-        # Unique features
-        if unique_features:
-            output.append("**Unique Features** (competitive differentiators):")
-            for feature, data in unique_features.items():
-                output.append(f"- {data['original']} (only {data['companies'][0]})")
-            output.append("")
-        
-        # Reference company analysis
-        if reference_company:
-            ref_profile = next(
-                (p for p in self.valid_profiles if p.company_name == reference_company),
-                None
-            )
-            
-            if ref_profile:
-                output.append(f"**{reference_company} vs. Market:**")
-                
-                # Features they have that others don't
-                their_unique = [
-                    f for f in ref_profile.key_features
-                    if f.lower() in unique_features
-                ]
-                if their_unique:
-                    output.append(f"- Unique advantages: {', '.join(their_unique)}")
-                
-                # Common features they're missing
-                missing_common = [
-                    data['original'] for f, data in common_features.items()
-                    if not any(kf.lower() == f for kf in ref_profile.key_features)
-                ]
-                if missing_common:
-                    output.append(f"- Missing common features: {', '.join(missing_common)}")
-        
-        return "\n".join(output)
-    
-    def analyze_target_markets(self) -> str:
-        """
-        Analyze target market positioning across competitors.
-        
-        Returns:
-            str: Formatted target market analysis
-        
-        Example:
-            >>> result = tools.analyze_target_markets()
-        """
-        if not self.valid_profiles:
-            return "No valid profiles available for market analysis"
-        
-        output = ["**Target Market Analysis:**\n"]
-        
-        # Group by target market
-        market_groups: Dict[str, List[str]] = {}
-        no_market_specified = []
-        
-        for profile in self.valid_profiles:
-            if profile.target_market:
-                market = profile.target_market
-                if market not in market_groups:
-                    market_groups[market] = []
-                market_groups[market].append(profile.company_name)
-            else:
-                no_market_specified.append(profile.company_name)
-        
-        # Display market segments
-        if market_groups:
-            for market, companies in sorted(market_groups.items()):
-                output.append(f"**{market}:**")
-                for company in companies:
-                    output.append(f"  - {company}")
-                output.append("")
-        
-        if no_market_specified:
-            output.append("**Unspecified Target Market:**")
-            for company in no_market_specified:
-                output.append(f"  - {company}")
-            output.append("")
-        
-        # Insights
-        output.append("**Market Insights:**")
-        output.append(f"- Total market segments identified: {len(market_groups)}")
-        
-        if market_groups:
-            most_crowded = max(market_groups.items(), key=lambda x: len(x[1]))
-            output.append(f"- Most competitive segment: {most_crowded[0]} ({len(most_crowded[1])} competitors)")
-        
-        return "\n".join(output)
-    
-    def get_technology_overview(self) -> str:
-        """
-        Analyze technology stack trends across competitors.
-        
-        Returns:
-            str: Formatted technology analysis
-        
-        Example:
-            >>> result = tools.get_technology_overview()
-        """
-        if not self.valid_profiles:
-            return "No valid profiles available for technology analysis"
-        
-        output = ["**Technology Stack Overview:**\n"]
+        output = ["**Technology Trend Analysis:**\n"]
         
         # Collect all technologies
-        tech_usage: Dict[str, List[str]] = {}
+        tech_mentions: Dict[str, List[str]] = {}
         
         for profile in self.valid_profiles:
-            for tech in profile.technology_stack:
-                if tech not in tech_usage:
-                    tech_usage[tech] = []
-                tech_usage[tech].append(profile.company_name)
+            for tech in profile.key_technologies:
+                tech_lower = tech.lower()
+                if tech_lower not in tech_mentions:
+                    tech_mentions[tech_lower] = {
+                        "original": tech,
+                        "articles": []
+                    }
+                tech_mentions[tech_lower]["articles"].append(profile.headline)
         
-        if not tech_usage:
-            return "No technology stack information available"
+        if not tech_mentions:
+            return "No technologies identified in articles"
         
-        # Sort by popularity
+        # Sort by frequency
         sorted_tech = sorted(
-            tech_usage.items(), 
-            key=lambda x: len(x[1]), 
+            tech_mentions.items(),
+            key=lambda x: len(x[1]["articles"]),
             reverse=True
         )
         
-        output.append("**Most Common Technologies:**")
-        for tech, companies in sorted_tech[:10]:  # Top 10
-            output.append(f"- {tech} ({len(companies)} competitor(s))")
-            if len(companies) <= 3:
-                output.append(f"  Used by: {', '.join(companies)}")
+        output.append(f"**Most Mentioned Technologies:**")
+        for tech, data in sorted_tech[:15]:  # Top 15
+            count = len(data["articles"])
+            output.append(f"- {data['original']} ({count} article{'s' if count > 1 else ''})")
+            if count <= 3:
+                output.append(f"  Mentioned in: {', '.join(data['articles'][:3])}")
+        
+        output.append("")
+        
+        # Identify technologies mentioned in high-impact articles
+        high_impact_articles = [
+            p for p in self.valid_profiles
+            if p.potential_impact in [ImpactLevel.HIGH, ImpactLevel.CRITICAL]
+        ]
+        
+        if high_impact_articles:
+            output.append(f"**Technologies in High-Impact News:**")
+            high_impact_tech = set()
+            for article in high_impact_articles:
+                high_impact_tech.update(article.key_technologies)
+            
+            for tech in sorted(high_impact_tech):
+                output.append(f"- {tech}")
+        
+        return "\n".join(output)
+    
+    def analyze_industry_impact(self) -> str:
+        """
+        Analyze industry impact across all articles.
+        
+        Identifies which industries are most affected by
+        AI developments covered in the news.
+        
+        Returns:
+            str: Formatted industry impact analysis
+        
+        Example:
+            >>> result = tools.analyze_industry_impact()
+        """
+        if not self.valid_profiles:
+            return "No valid articles available for industry analysis"
+        
+        output = ["**Industry Impact Analysis:**\n"]
+        
+        # Collect all industries
+        industry_mentions: Dict[str, List[str]] = {}
+        
+        for profile in self.valid_profiles:
+            for industry in profile.affected_industries:
+                if industry not in industry_mentions:
+                    industry_mentions[industry] = []
+                industry_mentions[industry].append(profile.headline)
+        
+        if not industry_mentions:
+            return "No industry impact information available"
+        
+        # Sort by frequency
+        sorted_industries = sorted(
+            industry_mentions.items(),
+            key=lambda x: len(x[1]),
+            reverse=True
+        )
+        
+        output.append(f"**Most Affected Industries:**")
+        for industry, articles in sorted_industries[:10]:  # Top 10
+            count = len(articles)
+            output.append(f"- **{industry}** ({count} article{'s' if count > 1 else ''})")
+            if count <= 2:
+                for article in articles:
+                    output.append(f"  • {article}")
+        
+        output.append("")
+        
+        # Industry impact by impact level
+        output.append("**Industry Impact by Development Severity:**")
+        
+        for impact_level in [ImpactLevel.CRITICAL, ImpactLevel.HIGH, ImpactLevel.MEDIUM]:
+            relevant_articles = [
+                p for p in self.valid_profiles
+                if p.potential_impact == impact_level
+            ]
+            
+            if relevant_articles:
+                industries = set()
+                for article in relevant_articles:
+                    industries.update(article.affected_industries)
+                
+                if industries:
+                    output.append(f"\n**{impact_level.value} Impact:**")
+                    output.append(f"Industries: {', '.join(sorted(industries))}")
+        
+        return "\n".join(output)
+    
+    def prioritize_articles(self) -> str:
+        """
+        Rank articles by recommended investigation priority.
+        
+        Organizes articles by priority level and provides
+        actionable reading order.
+        
+        Returns:
+            str: Formatted priority analysis
+        
+        Example:
+            >>> result = tools.prioritize_articles()
+        """
+        if not self.valid_profiles:
+            return "No valid articles available for prioritization"
+        
+        output = ["**Article Priority Rankings:**\n"]
+        
+        # Filter articles with priority assigned
+        prioritized = [
+            p for p in self.valid_profiles
+            if p.recommended_priority is not None
+        ]
+        
+        if not prioritized:
+            return "No articles have priority rankings assigned"
+        
+        # Group by priority level
+        priority_groups = {i: [] for i in range(1, 6)}
+        
+        for profile in prioritized:
+            priority_groups[profile.recommended_priority].append(profile)
+        
+        # Priority labels
+        priority_labels = {
+            1: "🔴 URGENT - Investigate Immediately",
+            2: "🟠 HIGH - Investigate Soon",
+            3: "🟡 MEDIUM - Investigate When Relevant",
+            4: "🟢 LOW - Investigate If Interested",
+            5: "⚪ OPTIONAL - Low Priority"
+        }
+        
+        for priority in range(1, 6):
+            articles = priority_groups[priority]
+            if articles:
+                output.append(f"**Priority {priority}: {priority_labels[priority]}**")
+                output.append(f"Count: {len(articles)} article{'s' if len(articles) > 1 else ''}")
+                output.append("")
+                
+                # Sort by relevance score within priority
+                sorted_articles = sorted(
+                    articles,
+                    key=lambda x: x.relevance_score or 0.0,
+                    reverse=True
+                )
+                
+                for article in sorted_articles:
+                    impact = article.potential_impact.value if article.potential_impact else "N/A"
+                    relevance = f"{article.relevance_score:.2f}" if article.relevance_score else "N/A"
+                    
+                    output.append(f"• **{article.headline}**")
+                    output.append(f"  Source: {article.news_source} | Impact: {impact} | Relevance: {relevance}")
+                    output.append("")
+        
+        return "\n".join(output)
+    
+    def identify_use_cases(self) -> str:
+        """
+        Identify and categorize use cases across articles.
+        
+        Returns:
+            str: Formatted use case analysis
+        
+        Example:
+            >>> result = tools.identify_use_cases()
+        """
+        if not self.valid_profiles:
+            return "No valid articles available for use case analysis"
+        
+        output = ["**Use Case Analysis:**\n"]
+        
+        # Collect all use cases
+        use_case_mentions: Dict[str, List[str]] = {}
+        
+        for profile in self.valid_profiles:
+            for use_case in profile.use_cases:
+                use_case_lower = use_case.lower()
+                if use_case_lower not in use_case_mentions:
+                    use_case_mentions[use_case_lower] = {
+                        "original": use_case,
+                        "articles": []
+                    }
+                use_case_mentions[use_case_lower]["articles"].append(profile.headline)
+        
+        if not use_case_mentions:
+            return "No use cases identified in articles"
+        
+        # Sort by frequency
+        sorted_use_cases = sorted(
+            use_case_mentions.items(),
+            key=lambda x: len(x[1]["articles"]),
+            reverse=True
+        )
+        
+        output.append(f"**Most Common Use Cases:**")
+        for use_case, data in sorted_use_cases[:10]:  # Top 10
+            count = len(data["articles"])
+            output.append(f"- {data['original']} ({count} article{'s' if count > 1 else ''})")
         
         return "\n".join(output)
     
     def get_comprehensive_summary(self) -> str:
         """
-        Generate a comprehensive summary of all competitors.
+        Generate a comprehensive summary of all news articles.
         
         Returns:
             str: Formatted comprehensive summary
@@ -346,22 +406,54 @@ class CompetitorTools:
         Example:
             >>> result = tools.get_comprehensive_summary()
         """
-        output = ["**Competitive Intelligence Summary:**\n"]
+        output = ["**AI News Intelligence Summary:**\n"]
         
         output.append(f"**Overview:**")
-        output.append(f"- Total competitors analyzed: {len(self.profiles)}")
+        output.append(f"- Total articles analyzed: {len(self.profiles)}")
         output.append(f"- Successful extractions: {len(self.valid_profiles)}")
         output.append(f"- Failed scrapes: {len(self.profiles) - len(self.valid_profiles)}")
         output.append("")
         
         if self.valid_profiles:
-            output.append("**Competitors:**")
+            # Impact distribution
+            impact_counts = {}
             for profile in self.valid_profiles:
-                output.append(f"- {profile.company_name}")
-                if profile.tagline:
-                    output.append(f"  Tagline: {profile.tagline}")
-                output.append(f"  Features: {len(profile.key_features)}")
-                output.append(f"  Pricing Tiers: {len(profile.pricing_tiers)}")
+                if profile.potential_impact:
+                    level = profile.potential_impact.value
+                    impact_counts[level] = impact_counts.get(level, 0) + 1
+            
+            if impact_counts:
+                output.append("**Impact Distribution:**")
+                for level in ["Critical", "High", "Medium", "Low"]:
+                    count = impact_counts.get(level, 0)
+                    if count > 0:
+                        output.append(f"- {level}: {count} article{'s' if count > 1 else ''}")
+                output.append("")
+            
+            # News sources
+            sources = {}
+            for profile in self.valid_profiles:
+                source = profile.news_source
+                sources[source] = sources.get(source, 0) + 1
+            
+            if sources:
+                output.append("**News Sources:**")
+                for source, count in sorted(sources.items(), key=lambda x: x[1], reverse=True):
+                    output.append(f"- {source}: {count} article{'s' if count > 1 else ''}")
+                output.append("")
+            
+            # Recent articles (if dates available)
+            dated_articles = [p for p in self.valid_profiles if p.publication_date]
+            if dated_articles:
+                output.append("**Recent Articles:**")
+                sorted_by_date = sorted(
+                    dated_articles,
+                    key=lambda x: x.publication_date or "",
+                    reverse=True
+                )[:5]
+                
+                for article in sorted_by_date:
+                    output.append(f"- {article.headline} ({article.publication_date})")
                 output.append("")
         
         return "\n".join(output)

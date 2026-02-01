@@ -1,6 +1,6 @@
 """
 Web Scraping using crawl4ai
-Async crawler for competitor website content extraction
+Async crawler for AI news article content extraction
 """
 
 import asyncio
@@ -8,9 +8,9 @@ from typing import Optional, Callable, Dict
 from crawl4ai import AsyncWebCrawler
 
 
-class CompetitorCrawler:
+class NewsArticleCrawler:
     """
-    Async web crawler for competitor websites using crawl4ai.
+    Async web crawler for AI news articles using crawl4ai.
     
     Provides concurrent scraping capabilities with progress callbacks
     for real-time UI updates. Handles errors gracefully and returns
@@ -21,9 +21,9 @@ class CompetitorCrawler:
         timeout: Scraping timeout in seconds
     
     Example:
-        >>> crawler = CompetitorCrawler(progress_callback=st.status.update)
-        >>> results = await crawler.scrape_multiple(["https://example.com"])
-        >>> content = results["https://example.com"]
+        >>> crawler = NewsArticleCrawler(progress_callback=st.status.update)
+        >>> results = await crawler.scrape_multiple(["https://techcrunch.com/..."])
+        >>> content = results["https://techcrunch.com/..."]
     """
     
     def __init__(
@@ -32,7 +32,7 @@ class CompetitorCrawler:
         timeout: int = 30
     ):
         """
-        Initialize the competitor crawler.
+        Initialize the news article crawler.
         
         Args:
             progress_callback: Optional function for progress updates
@@ -57,25 +57,25 @@ class CompetitorCrawler:
     
     async def scrape_url(self, url: str) -> Optional[str]:
         """
-        Scrape a single URL and return cleaned content.
+        Scrape a single news article URL and return cleaned content.
         
         Uses crawl4ai's AsyncWebCrawler with optimized settings for
-        competitive intelligence extraction. Returns Markdown format
-        which is cleaner than raw HTML for LLM processing.
+        news article extraction. Returns Markdown format which is
+        cleaner than raw HTML for LLM processing.
         
         Args:
-            url: Website URL to scrape
+            url: News article URL to scrape
         
         Returns:
             Optional[str]: Cleaned Markdown content or None if scraping failed
         
         Example:
-            >>> content = await crawler.scrape_url("https://competitor.com")
+            >>> content = await crawler.scrape_url("https://techcrunch.com/ai-news")
             >>> if content:
             ...     print(f"Scraped {len(content)} characters")
         """
         try:
-            self._update_progress(f"🌐 Scraping {url}...")
+            self._update_progress(f"🌐 Scraping news article: {url}...")
             
             # Initialize async crawler (crawl4ai 0.8.0 syntax)
             async with AsyncWebCrawler(verbose=False) as crawler:
@@ -98,7 +98,7 @@ class CompetitorCrawler:
                         return None
                     
                     self._update_progress(
-                        f"✅ Scraped {url} ({len(content):,} characters)"
+                        f"✅ Scraped article from {url} ({len(content):,} characters)"
                     )
                     
                     return content
@@ -126,30 +126,30 @@ class CompetitorCrawler:
         urls: list[str]
     ) -> Dict[str, Optional[str]]:
         """
-        Scrape multiple URLs concurrently.
+        Scrape multiple news article URLs concurrently.
         
         Launches async tasks for all URLs simultaneously and gathers results.
         Failed scrapes return None but don't block other URLs from processing.
         
         Args:
-            urls: List of website URLs to scrape
+            urls: List of news article URLs to scrape
         
         Returns:
             Dict[str, Optional[str]]: Mapping of URL -> content
                                      (None if scraping failed)
         
         Example:
-            >>> urls = ["https://comp1.com", "https://comp2.com"]
+            >>> urls = ["https://techcrunch.com/ai1", "https://venturebeat.com/ai2"]
             >>> results = await crawler.scrape_multiple(urls)
             >>> successful = {url: content for url, content in results.items() if content}
-            >>> print(f"Successfully scraped {len(successful)}/{len(urls)} URLs")
+            >>> print(f"Successfully scraped {len(successful)}/{len(urls)} articles")
         """
         if not urls:
             self._update_progress("⚠️ No URLs provided to scrape")
             return {}
         
         self._update_progress(
-            f"🚀 Starting concurrent scrape of {len(urls)} URL(s)..."
+            f"🚀 Starting concurrent scrape of {len(urls)} article(s)..."
         )
         
         # Create async tasks for all URLs
@@ -179,7 +179,7 @@ class CompetitorCrawler:
         
         # Final summary
         self._update_progress(
-            f"📊 Scraping complete: {success_count}/{len(urls)} successful"
+            f"📊 Scraping complete: {success_count}/{len(urls)} article(s) successful"
         )
         
         return scraped_data
@@ -208,3 +208,33 @@ class CompetitorCrawler:
             return False
         
         return True
+    
+    def get_domain(self, url: str) -> Optional[str]:
+        """
+        Extract domain name from URL.
+        
+        Useful for identifying news sources.
+        
+        Args:
+            url: Article URL
+        
+        Returns:
+            Optional[str]: Domain name or None if invalid URL
+        
+        Example:
+            >>> domain = crawler.get_domain("https://techcrunch.com/2026/01/ai-news")
+            >>> print(domain)
+            techcrunch.com
+        """
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            domain = parsed.netloc
+            
+            # Remove 'www.' prefix if present
+            if domain.startswith('www.'):
+                domain = domain[4:]
+            
+            return domain if domain else None
+        except Exception:
+            return None

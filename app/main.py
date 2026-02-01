@@ -1,5 +1,5 @@
 """
-Streamlit UI for Competitive Intelligence Agent
+Streamlit UI for AI News Summarizer & Analyzer
 Main entry point for the application
 """
 
@@ -13,10 +13,10 @@ from typing import List, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.config import AppConfig
-from app.scraping.crawler import CompetitorCrawler
+from app.scraping.crawler import NewsArticleCrawler
 from app.extraction.chain import ExtractionChain
-from app.extraction.schemas import CompetitorProfile
-from app.vectorstore.store import CompetitorVectorStore
+from app.extraction.schemas import NewsArticleProfile
+from app.vectorstore.store import NewsVectorStore
 from app.synthesis.report_generator import SynthesisAgent
 from app.utils.rate_limiter import RateLimiter
 from app.utils.logger import ProgressLogger
@@ -24,8 +24,8 @@ from app.utils.logger import ProgressLogger
 
 # Page configuration
 st.set_page_config(
-    page_title="Competitive Intelligence Agent",
-    page_icon="🔍",
+    page_title="AI News Summarizer & Analyzer",
+    page_icon="📰",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -83,8 +83,8 @@ def initialize_session_state():
     if 'current_report' not in st.session_state:
         st.session_state.current_report = ""
     
-    if 'analyzed_profiles' not in st.session_state:
-        st.session_state.analyzed_profiles = []
+    if 'analyzed_articles' not in st.session_state:
+        st.session_state.analyzed_articles = []
 
 
 def render_sidebar():
@@ -133,9 +133,9 @@ Synthesis Temp: 0.7
         # About
         st.markdown("### ℹ️ About")
         st.markdown("""
-        **Competitive Intelligence Agent**
+        **AI News Summarizer & Analyzer**
         
-        AI-powered competitive analysis using:
+        Analyze AI news with:
         - Google Gemini 2.0 Flash
         - LangChain LCEL
         - Qdrant Vector Store
@@ -147,22 +147,22 @@ Synthesis Temp: 0.7
 
 def render_header():
     """Render main header."""
-    st.markdown('<p class="main-header">🔍 Competitive Intelligence Synthesis Agent</p>', 
+    st.markdown('<p class="main-header">📰 AI News Summarizer & Analyzer</p>', 
                 unsafe_allow_html=True)
     st.markdown(
-        '<p class="sub-header">AI-powered competitive analysis using Google Gemini, '
+        '<p class="sub-header">AI-powered news intelligence using Google Gemini, '
         'LangChain, and semantic search</p>',
         unsafe_allow_html=True
     )
     
     st.markdown("""
     **How it works:**
-    1. Enter 1-3 competitor URLs
+    1. Enter 1-5 AI news article URLs
     2. Specify your analysis objective
-    3. Get instant AI-powered competitive intelligence
+    3. Get instant AI-powered news intelligence
     
-    The system scrapes websites, extracts structured data, and generates comprehensive 
-    analysis reports with pricing comparisons, feature gaps, and strategic recommendations.
+    The system scrapes articles, extracts structured insights, and generates comprehensive 
+    analysis reports with technology trends, industry impact, use cases, and priority rankings.
     """)
     
     st.markdown("---")
@@ -204,7 +204,7 @@ async def run_analysis(
     Main analysis pipeline.
     
     Args:
-        urls: List of competitor URLs
+        urls: List of news article URLs
         objective: Analysis objective
         progress_container: Streamlit container for progress updates
         report_container: Streamlit container for report display
@@ -218,14 +218,14 @@ async def run_analysis(
         rate_limiter = RateLimiter(config.MAX_RPM)
         
         # Step 1: Scraping (20% progress)
-        status_text.markdown("### 🌐 Phase 1: Web Scraping")
-        st.info(f"Scraping {len(urls)} competitor website(s)...")
+        status_text.markdown("### 🌐 Phase 1: Article Scraping")
+        st.info(f"Scraping {len(urls)} news article(s)...")
         progress_bar.progress(0.05)
         
         def update_progress(msg: str):
             status_text.markdown(f"**Current:** {msg}")
         
-        crawler = CompetitorCrawler(
+        crawler = NewsArticleCrawler(
             progress_callback=update_progress,
             timeout=config.SCRAPE_TIMEOUT
         )
@@ -235,18 +235,18 @@ async def run_analysis(
         
         # Show scraping results
         successful_scrapes = sum(1 for content in scraped_data.values() if content)
-        st.success(f"✅ Scraped {successful_scrapes}/{len(urls)} websites successfully")
+        st.success(f"✅ Scraped {successful_scrapes}/{len(urls)} article(s) successfully")
         
         # Step 2: Extraction (20% -> 50% progress)
-        status_text.markdown("### 🔍 Phase 2: Intelligence Extraction")
-        st.info("Extracting structured competitive intelligence...")
+        status_text.markdown("### 🔍 Phase 2: News Intelligence Extraction")
+        st.info("Extracting structured news insights...")
         progress_bar.progress(0.25)
         
         extractor = ExtractionChain(st.session_state.api_key, config)
-        profiles: List[CompetitorProfile] = []
+        profiles: List[NewsArticleProfile] = []
         
         for idx, (url, content) in enumerate(scraped_data.items(), 1):
-            update_progress(f"Extracting data from {url} ({idx}/{len(scraped_data)})...")
+            update_progress(f"Extracting insights from article {idx}/{len(scraped_data)}...")
             
             if content:
                 # Respect rate limit
@@ -257,18 +257,22 @@ async def run_analysis(
                     profiles.append(profile)
                 except Exception as e:
                     # Create error profile
-                    error_profile = CompetitorProfile(
-                        company_name=url,
-                        website_url=url,
+                    error_profile = NewsArticleProfile(
+                        headline=url,
+                        article_url=url,
+                        news_source="Unknown",
+                        article_summary=f"Extraction error: {str(e)}",
                         scrape_success=False,
                         error_message=f"Extraction error: {str(e)}"
                     )
                     profiles.append(error_profile)
             else:
                 # Create error profile for failed scrape
-                error_profile = CompetitorProfile(
-                    company_name=url,
-                    website_url=url,
+                error_profile = NewsArticleProfile(
+                    headline=url,
+                    article_url=url,
+                    news_source="Unknown",
+                    article_summary="Article scraping failed",
                     scrape_success=False,
                     error_message="Website scraping failed"
                 )
@@ -281,27 +285,27 @@ async def run_analysis(
         
         # Show extraction results
         valid_profiles = [p for p in profiles if p.scrape_success]
-        st.success(f"✅ Extracted data from {len(valid_profiles)}/{len(profiles)} competitors")
+        st.success(f"✅ Extracted insights from {len(valid_profiles)}/{len(profiles)} article(s)")
         
         # Store profiles in session state
-        st.session_state.analyzed_profiles = profiles
+        st.session_state.analyzed_articles = profiles
         
         # Step 3: Vector Store (50% -> 60% progress)
         status_text.markdown("### 📊 Phase 3: Semantic Indexing")
         st.info("Building semantic search index...")
         progress_bar.progress(0.55)
         
-        vectorstore = CompetitorVectorStore(st.session_state.api_key, config)
+        vectorstore = NewsVectorStore(st.session_state.api_key, config)
         
         for profile in valid_profiles:
-            await vectorstore.ingest_profile(profile)
+            await vectorstore.ingest_article(profile)
         
         progress_bar.progress(0.60)
-        st.success(f"✅ Indexed {len(valid_profiles)} competitor profile(s)")
+        st.success(f"✅ Indexed {len(valid_profiles)} news article(s)")
         
         # Step 4: Synthesis (60% -> 100% progress)
         status_text.markdown("### ✍️ Phase 4: Report Generation")
-        st.info("Generating comprehensive competitive analysis...")
+        st.info("Generating comprehensive news analysis...")
         progress_bar.progress(0.65)
         
         # Prepare synthesis agent
@@ -315,7 +319,7 @@ async def run_analysis(
     # Display report in separate container
     with report_container:
         st.markdown("---")
-        st.markdown("## 📄 Competitive Analysis Report")
+        st.markdown("## 📄 AI News Analysis Report")
         
         # Create placeholder for streaming report
         report_placeholder = st.empty()
@@ -363,38 +367,49 @@ def main():
         st.stop()
     
     # Main input section
-    st.header("1️⃣ Enter Competitor URLs")
-    st.markdown("Enter 1-3 competitor websites to analyze (one per field)")
+    st.header("1️⃣ Enter AI News Article URLs")
+    st.markdown("Enter 1-5 AI news article URLs (one per field)")
     
     # URL inputs
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
         url1 = st.text_input(
-            "Competitor 1 URL",
+            "Article 1 URL",
             key="url_1",
-            placeholder="https://competitor1.com"
+            placeholder="https://techcrunch.com/ai/..."
+        )
+        
+        url2 = st.text_input(
+            "Article 2 URL",
+            key="url_2",
+            placeholder="https://venturebeat.com/ai/..."
+        )
+        
+        url3 = st.text_input(
+            "Article 3 URL",
+            key="url_3",
+            placeholder="https://theverge.com/ai/..."
         )
     
     with col2:
-        url2 = st.text_input(
-            "Competitor 2 URL",
-            key="url_2",
-            placeholder="https://competitor2.com"
+        url4 = st.text_input(
+            "Article 4 URL",
+            key="url_4",
+            placeholder="https://arstechnica.com/ai/..."
         )
-    
-    with col3:
-        url3 = st.text_input(
-            "Competitor 3 URL",
-            key="url_3",
-            placeholder="https://competitor3.com"
+        
+        url5 = st.text_input(
+            "Article 5 URL",
+            key="url_5",
+            placeholder="https://wired.com/ai/..."
         )
     
     # Collect and validate URLs
-    urls = [url for url in [url1, url2, url3] if url.strip()]
+    urls = [url for url in [url1, url2, url3, url4, url5] if url.strip()]
     
     if not urls:
-        st.info("👆 Add at least one competitor URL to begin analysis")
+        st.info("👆 Add at least one news article URL to begin analysis")
         st.stop()
     
     # Validate URLs
@@ -407,13 +422,13 @@ def main():
     
     # Analysis objective
     st.header("2️⃣ Analysis Objective")
-    st.markdown("Specify what you'd like to analyze about these competitors")
+    st.markdown("Specify what you'd like to analyze about these AI news articles")
     
     objective = st.text_area(
         "What would you like to analyze?",
-        value="Analyze the competitive landscape focusing on pricing strategies, key features, market positioning, and identify opportunities for differentiation.",
+        value="Analyze the AI news developments focusing on technology trends, industry impact, practical use cases, and provide a prioritized investigation roadmap.",
         height=100,
-        help="Be specific about what aspects you want to focus on (e.g., pricing, features, target markets, technology)"
+        help="Be specific about what aspects you want to focus on (e.g., technology trends, industry impact, use cases, priority ranking)"
     )
     
     if not objective.strip():
@@ -435,7 +450,7 @@ def main():
     # Show summary before generation
     with st.expander("📋 Analysis Summary", expanded=True):
         st.markdown(f"""
-        **Competitors to analyze:** {len(valid_urls)}
+        **Articles to analyze:** {len(valid_urls)}
         {chr(10).join([f"- {url}" for url in valid_urls])}
         
         **Analysis objective:** {objective[:200]}{"..." if len(objective) > 200 else ""}
@@ -469,7 +484,7 @@ def main():
                 1. Check your internet connection
                 2. Verify API key is valid
                 3. Ensure URLs are accessible
-                4. Try with fewer competitors
+                4. Try with fewer articles
                 """)
     
     # Download report button (if report exists)
@@ -482,7 +497,7 @@ def main():
             st.download_button(
                 label="📥 Download Report",
                 data=st.session_state.current_report,
-                file_name="competitive_analysis_report.md",
+                file_name="ai_news_analysis_report.md",
                 mime="text/markdown",
                 use_container_width=True
             )
@@ -491,7 +506,7 @@ def main():
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: #666; padding: 2rem 0;'>
-        <p><strong>Competitive Intelligence Synthesis Agent</strong></p>
+        <p><strong>AI News Summarizer & Analyzer</strong></p>
         <p>Built with Google Gemini 2.0 Flash | LangChain | Qdrant | crawl4ai</p>
         <p style='font-size: 0.9rem;'>
             <a href='#' style='color: #1f77b4; text-decoration: none;'>Documentation</a> • 

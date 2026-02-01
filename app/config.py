@@ -1,6 +1,6 @@
 """
 Project Configuration
-Centralized settings for the Competitive Intelligence Agent
+Centralized settings for the AI News Summarizer & Analyzer
 """
 
 from typing import Optional
@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 class AppConfig(BaseModel):
     """
-    Centralized configuration for the Competitive Intelligence Agent.
+    Centralized configuration for the AI News Summarizer & Analyzer.
     
     Uses Pydantic for validation and type safety. All configuration parameters
     are defined here to avoid magic numbers scattered throughout the codebase.
@@ -20,7 +20,7 @@ class AppConfig(BaseModel):
         EXTRACTION_TEMPERATURE: Temperature for deterministic extraction (0.0)
         SYNTHESIS_TEMPERATURE: Temperature for creative synthesis (0.7)
         MAX_RPM: Maximum requests per minute (free tier limit)
-        MAX_COMPETITORS: Maximum number of competitor URLs to analyze
+        MAX_NEWS_SOURCES: Maximum number of news article URLs to analyze
         SCRAPE_TIMEOUT: Timeout in seconds for web scraping operations
         VECTOR_SIZE: Embedding dimension size for Gemini embeddings
         COLLECTION_NAME: Qdrant collection name for vector storage
@@ -61,11 +61,11 @@ class AppConfig(BaseModel):
     )
     
     # Scraping Configuration
-    MAX_COMPETITORS: int = Field(
-        default=3,
+    MAX_NEWS_SOURCES: int = Field(
+        default=5,
         ge=1,
         le=10,
-        description="Maximum number of competitor URLs to analyze per session"
+        description="Maximum number of news article URLs to analyze per session"
     )
     
     SCRAPE_TIMEOUT: int = Field(
@@ -82,8 +82,8 @@ class AppConfig(BaseModel):
     )
     
     COLLECTION_NAME: str = Field(
-        default="competitors",
-        description="Qdrant collection name for competitor profiles"
+        default="ai_news",
+        description="Qdrant collection name for news article profiles"
     )
     
     # API Keys (loaded dynamically from session state)

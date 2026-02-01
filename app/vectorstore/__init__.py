@@ -1,10 +1,10 @@
 """
 Vector Store Module
-Handles semantic search and storage of competitor profiles using Qdrant
+Handles semantic search and storage of news article profiles using Qdrant
 """
 
-from app.vectorstore.store import CompetitorVectorStore
+from app.vectorstore.store import NewsVectorStore
 
 __all__ = [
-    "CompetitorVectorStore",
+    "NewsVectorStore",
 ]

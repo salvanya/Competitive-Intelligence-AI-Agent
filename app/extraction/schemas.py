@@ -1,166 +1,136 @@
 """
-Pydantic Models for Competitive Intelligence
-Defines structured schemas for competitor data extraction and validation
+Pydantic Models for AI News Analysis
+Defines structured schemas for news article data extraction and validation
 """
 
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
+from enum import Enum
 
 
-class PricingTier(BaseModel):
+class ImpactLevel(str, Enum):
+    """Enumeration for potential impact levels."""
+    LOW = "Low"
+    MEDIUM = "Medium"
+    HIGH = "High"
+    CRITICAL = "Critical"
+
+
+class NewsArticleProfile(BaseModel):
     """
-    Individual pricing tier model.
+    Complete AI news article profile.
     
-    Represents a single pricing plan (e.g., Free, Pro, Enterprise)
-    with normalization for "Contact Sales" pricing.
+    Comprehensive structured representation of an AI news article
+    extracted from news websites. Includes article metadata,
+    content analysis, relevance scoring, and impact assessment.
     
     Attributes:
-        name: Tier name (e.g., 'Pro', 'Enterprise', 'Starter')
-        price: Price string or 'Contact Sales' for custom pricing
-        features: List of key features included in this tier
-    
-    Example:
-        >>> tier = PricingTier(
-        ...     name="Pro",
-        ...     price="$99/month",
-        ...     features=["Unlimited projects", "Priority support"]
-        ... )
-    """
-    
-    name: str = Field(
-        description="Tier name (e.g., 'Pro', 'Enterprise', 'Starter')"
-    )
-    
-    price: Optional[str] = Field(
-        default=None,
-        description="Price string (e.g., '$99/month') or 'Contact Sales'"
-    )
-    
-    features: List[str] = Field(
-        default_factory=list,
-        description="Key features included in this tier"
-    )
-    
-    @field_validator('price')
-    @classmethod
-    def normalize_price(cls, v: Optional[str]) -> Optional[str]:
-        """
-        Normalize price field to handle custom/enterprise pricing.
-        
-        Converts variations like 'custom', 'enterprise', 'contact us'
-        to standardized 'Contact Sales' for consistency.
-        
-        Args:
-            v: Raw price value from extraction
-        
-        Returns:
-            Optional[str]: Normalized price or None
-        
-        Example:
-            >>> PricingTier.normalize_price("custom pricing")
-            'Contact Sales'
-            >>> PricingTier.normalize_price("$99")
-            '$99'
-        """
-        if v is None:
-            return None
-        
-        v = v.strip()
-        
-        # Normalize enterprise/custom pricing variations
-        if v.lower() in ['contact sales', 'custom', 'enterprise', 'contact us', 
-                         'get a quote', 'custom pricing', 'talk to sales']:
-            return "Contact Sales"
-        
-        return v
-    
-    @field_validator('features')
-    @classmethod
-    def validate_features(cls, v: List[str]) -> List[str]:
-        """
-        Validate and clean feature list.
-        
-        Removes empty strings and trims whitespace.
-        
-        Args:
-            v: List of features
-        
-        Returns:
-            List[str]: Cleaned feature list
-        """
-        return [feature.strip() for feature in v if feature and feature.strip()]
-
-
-class CompetitorProfile(BaseModel):
-    """
-    Complete competitor intelligence profile.
-    
-    Comprehensive structured representation of competitor analysis
-    extracted from their website. Includes company information,
-    product details, pricing, and technical stack.
-    
-    Attributes:
-        company_name: Official company name
-        website_url: Source URL that was scraped
-        tagline: Company tagline or value proposition
-        target_market: Target customer segment or market
-        key_features: Top product/service features
-        pricing_tiers: List of pricing plans
-        unique_selling_points: Key differentiators and USPs
-        technology_stack: Technologies, frameworks, certifications mentioned
+        headline: Article headline/title
+        article_url: Source URL of the article
+        news_source: Publication name (e.g., "TechCrunch", "VentureBeat")
+        publication_date: When the article was published
+        author: Article author name(s)
+        article_summary: Concise summary of the article (2-3 sentences)
+        key_technologies: AI technologies mentioned (e.g., "GPT-4", "LangChain")
+        use_cases: Practical applications and use cases described
+        affected_industries: Industries that could be impacted
+        potential_impact: Overall impact level assessment
+        relevance_score: Relevance score from 0.0 to 1.0
+        recommended_priority: Investigation priority ranking (1=highest, 5=lowest)
+        key_insights: Main takeaways and insights
+        limitations_mentioned: Any limitations or concerns discussed
         extraction_timestamp: ISO timestamp of when data was extracted
         scrape_success: Whether the scrape operation succeeded
         error_message: Error description if scrape failed
     
     Example:
-        >>> profile = CompetitorProfile(
-        ...     company_name="Acme Corp",
-        ...     website_url="https://acme.com",
-        ...     tagline="The best SaaS platform",
-        ...     key_features=["Feature 1", "Feature 2"],
-        ...     pricing_tiers=[PricingTier(name="Pro", price="$99")]
+        >>> profile = NewsArticleProfile(
+        ...     headline="OpenAI Releases GPT-5 with Enhanced Reasoning",
+        ...     article_url="https://techcrunch.com/...",
+        ...     news_source="TechCrunch",
+        ...     article_summary="OpenAI announced GPT-5...",
+        ...     key_technologies=["GPT-5", "Transformers"],
+        ...     potential_impact=ImpactLevel.HIGH,
+        ...     relevance_score=0.95
         ... )
     """
     
-    company_name: str = Field(
-        description="Official company name"
+    # Core Article Metadata
+    headline: str = Field(
+        description="Article headline or title"
     )
     
-    website_url: str = Field(
-        description="Source URL that was scraped"
+    article_url: str = Field(
+        description="Source URL of the article"
     )
     
-    tagline: Optional[str] = Field(
+    news_source: str = Field(
+        description="Publication name (e.g., 'TechCrunch', 'The Verge', 'VentureBeat')"
+    )
+    
+    publication_date: Optional[str] = Field(
         default=None,
-        description="Company tagline or value proposition"
+        description="Publication date in ISO format or human-readable format"
     )
     
-    target_market: Optional[str] = Field(
+    author: Optional[str] = Field(
         default=None,
-        description="Target customer segment or market (e.g., 'SMBs', 'Enterprise', 'Developers')"
+        description="Article author name(s)"
     )
     
-    key_features: List[str] = Field(
+    # Content Analysis
+    article_summary: str = Field(
+        description="Concise 2-3 sentence summary of the article content"
+    )
+    
+    key_technologies: List[str] = Field(
         default_factory=list,
-        description="Top product/service features (5-10 most important)"
+        description="AI technologies, models, or frameworks mentioned (e.g., 'GPT-4', 'LangChain', 'RAG')"
     )
     
-    pricing_tiers: List[PricingTier] = Field(
+    use_cases: List[str] = Field(
         default_factory=list,
-        description="List of pricing plans/tiers"
+        description="Practical applications and use cases described in the article"
     )
     
-    unique_selling_points: List[str] = Field(
+    affected_industries: List[str] = Field(
         default_factory=list,
-        description="Key differentiators and unique selling propositions"
+        description="Industries that could be impacted by the developments (e.g., 'Healthcare', 'Finance')"
     )
     
-    technology_stack: List[str] = Field(
+    # Impact Assessment
+    potential_impact: Optional[ImpactLevel] = Field(
+        default=None,
+        description="Overall potential impact level (Low, Medium, High, Critical)"
+    )
+    
+    relevance_score: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Relevance score from 0.0 (not relevant) to 1.0 (highly relevant)"
+    )
+    
+    recommended_priority: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=5,
+        description="Recommended investigation priority (1=highest priority, 5=lowest)"
+    )
+    
+    # Insights
+    key_insights: List[str] = Field(
         default_factory=list,
-        description="Technologies, frameworks, cloud providers, certifications mentioned"
+        description="Main takeaways and insights from the article"
     )
     
+    limitations_mentioned: List[str] = Field(
+        default_factory=list,
+        description="Any limitations, concerns, or risks mentioned"
+    )
+    
+    # Metadata
     extraction_timestamp: str = Field(
         default_factory=lambda: datetime.utcnow().isoformat(),
         description="ISO 8601 timestamp of data extraction"
@@ -176,34 +146,34 @@ class CompetitorProfile(BaseModel):
         description="Error description if scrape/extraction failed"
     )
     
-    @field_validator('company_name')
+    @field_validator('headline')
     @classmethod
-    def validate_company_name(cls, v: str) -> str:
+    def validate_headline(cls, v: str) -> str:
         """
-        Validate company name is not empty.
+        Validate headline is not empty.
         
         Args:
-            v: Company name
+            v: Headline text
         
         Returns:
-            str: Validated company name
+            str: Validated headline
         
         Raises:
-            ValueError: If company name is empty
+            ValueError: If headline is empty
         """
         v = v.strip()
         if not v:
-            raise ValueError("Company name cannot be empty")
+            raise ValueError("Headline cannot be empty")
         return v
     
-    @field_validator('website_url')
+    @field_validator('article_url')
     @classmethod
     def validate_url(cls, v: str) -> str:
         """
         Validate URL format.
         
         Args:
-            v: Website URL
+            v: Article URL
         
         Returns:
             str: Validated URL
@@ -216,9 +186,43 @@ class CompetitorProfile(BaseModel):
             raise ValueError("URL must start with http:// or https://")
         return v
     
+    @field_validator('relevance_score')
+    @classmethod
+    def validate_relevance_score(cls, v: Optional[float]) -> Optional[float]:
+        """
+        Validate relevance score is within range.
+        
+        Args:
+            v: Relevance score
+        
+        Returns:
+            Optional[float]: Validated score
+        """
+        if v is not None:
+            if v < 0.0 or v > 1.0:
+                raise ValueError("Relevance score must be between 0.0 and 1.0")
+        return v
+    
+    @field_validator('key_technologies', 'use_cases', 'affected_industries', 
+                     'key_insights', 'limitations_mentioned')
+    @classmethod
+    def validate_string_lists(cls, v: List[str]) -> List[str]:
+        """
+        Validate and clean string lists.
+        
+        Removes empty strings and trims whitespace.
+        
+        Args:
+            v: List of strings
+        
+        Returns:
+            List[str]: Cleaned list
+        """
+        return [item.strip() for item in v if item and item.strip()]
+    
     def get_summary(self) -> str:
         """
-        Get a concise text summary of the competitor profile.
+        Get a concise text summary of the news article profile.
         
         Useful for logging, debugging, or quick review.
         
@@ -227,23 +231,26 @@ class CompetitorProfile(BaseModel):
         
         Example:
             >>> print(profile.get_summary())
-            Company: Acme Corp
-            URL: https://acme.com
-            Features: 5
-            Pricing Tiers: 3
+            Headline: OpenAI Releases GPT-5
+            Source: TechCrunch
+            Impact: High
+            Priority: 1
             Status: ✅ Success
         """
         status = "✅ Success" if self.scrape_success else f"❌ Failed: {self.error_message}"
         
         summary_lines = [
-            f"Company: {self.company_name}",
-            f"URL: {self.website_url}",
-            f"Tagline: {self.tagline or 'N/A'}",
-            f"Target Market: {self.target_market or 'N/A'}",
-            f"Features: {len(self.key_features)}",
-            f"Pricing Tiers: {len(self.pricing_tiers)}",
-            f"USPs: {len(self.unique_selling_points)}",
-            f"Tech Stack: {len(self.technology_stack)}",
+            f"Headline: {self.headline}",
+            f"Source: {self.news_source}",
+            f"URL: {self.article_url}",
+            f"Published: {self.publication_date or 'N/A'}",
+            f"Author: {self.author or 'N/A'}",
+            f"Technologies: {len(self.key_technologies)}",
+            f"Use Cases: {len(self.use_cases)}",
+            f"Industries: {len(self.affected_industries)}",
+            f"Impact: {self.potential_impact.value if self.potential_impact else 'N/A'}",
+            f"Relevance: {self.relevance_score if self.relevance_score else 'N/A'}",
+            f"Priority: {self.recommended_priority if self.recommended_priority else 'N/A'}",
             f"Extracted: {self.extraction_timestamp}",
             f"Status: {status}"
         ]
@@ -255,7 +262,7 @@ class CompetitorProfile(BaseModel):
         Convert profile to searchable text for vector embeddings.
         
         Creates a comprehensive text representation that captures
-        all important aspects of the competitor for semantic search.
+        all important aspects of the news article for semantic search.
         
         Returns:
             str: Formatted text suitable for embedding
@@ -265,59 +272,63 @@ class CompetitorProfile(BaseModel):
             >>> # Use for vector store ingestion
         """
         sections = [
-            f"Company: {self.company_name}",
-            f"Tagline: {self.tagline or 'N/A'}",
-            f"Target Market: {self.target_market or 'N/A'}",
-            f"Features: {', '.join(self.key_features)}",
-            f"USPs: {', '.join(self.unique_selling_points)}",
-            f"Tech Stack: {', '.join(self.technology_stack)}",
-            f"Pricing: {', '.join([f'{t.name}: {t.price}' for t in self.pricing_tiers])}"
+            f"Headline: {self.headline}",
+            f"Source: {self.news_source}",
+            f"Summary: {self.article_summary}",
+            f"Technologies: {', '.join(self.key_technologies)}",
+            f"Use Cases: {', '.join(self.use_cases)}",
+            f"Industries: {', '.join(self.affected_industries)}",
+            f"Key Insights: {', '.join(self.key_insights)}",
+            f"Impact Level: {self.potential_impact.value if self.potential_impact else 'N/A'}",
         ]
+        
+        if self.limitations_mentioned:
+            sections.append(f"Limitations: {', '.join(self.limitations_mentioned)}")
         
         return "\n".join(sections)
     
     class Config:
         """Pydantic configuration."""
+        use_enum_values = True
         json_schema_extra = {
             "example": {
-                "company_name": "Acme SaaS",
-                "website_url": "https://acmesaas.com",
-                "tagline": "The all-in-one project management solution",
-                "target_market": "Small to Medium Businesses",
-                "key_features": [
-                    "Real-time collaboration",
-                    "Advanced analytics dashboard",
-                    "Custom workflows",
-                    "Mobile apps (iOS/Android)",
-                    "API integrations"
+                "headline": "OpenAI Announces GPT-5 with Advanced Reasoning Capabilities",
+                "article_url": "https://techcrunch.com/2026/01/15/openai-gpt5-announcement",
+                "news_source": "TechCrunch",
+                "publication_date": "2026-01-15",
+                "author": "Kyle Wiggers",
+                "article_summary": "OpenAI has unveiled GPT-5, featuring enhanced reasoning capabilities and multimodal understanding. The model shows significant improvements in complex problem-solving and code generation.",
+                "key_technologies": [
+                    "GPT-5",
+                    "Multimodal AI",
+                    "Advanced Reasoning",
+                    "Code Generation"
                 ],
-                "pricing_tiers": [
-                    {
-                        "name": "Starter",
-                        "price": "$29/month",
-                        "features": ["5 projects", "10 team members", "Basic support"]
-                    },
-                    {
-                        "name": "Pro",
-                        "price": "$99/month",
-                        "features": ["Unlimited projects", "50 team members", "Priority support"]
-                    },
-                    {
-                        "name": "Enterprise",
-                        "price": "Contact Sales",
-                        "features": ["Custom limits", "Dedicated account manager", "SLA"]
-                    }
+                "use_cases": [
+                    "Software development assistance",
+                    "Complex data analysis",
+                    "Scientific research support",
+                    "Educational tutoring"
                 ],
-                "unique_selling_points": [
-                    "AI-powered task recommendations",
-                    "99.9% uptime SLA",
-                    "SOC 2 Type II certified"
+                "affected_industries": [
+                    "Software Development",
+                    "Education",
+                    "Research",
+                    "Healthcare",
+                    "Finance"
                 ],
-                "technology_stack": [
-                    "AWS",
-                    "React",
-                    "Python",
-                    "PostgreSQL"
+                "potential_impact": "High",
+                "relevance_score": 0.95,
+                "recommended_priority": 1,
+                "key_insights": [
+                    "GPT-5 outperforms GPT-4 on reasoning benchmarks by 40%",
+                    "New safety measures implemented to prevent misuse",
+                    "API access available to enterprise customers in Q2 2026"
+                ],
+                "limitations_mentioned": [
+                    "Still prone to occasional hallucinations",
+                    "High computational requirements",
+                    "Limited availability at launch"
                 ],
                 "scrape_success": True,
                 "error_message": None

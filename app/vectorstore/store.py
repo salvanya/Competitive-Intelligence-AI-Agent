@@ -1,6 +1,6 @@
 """
 Qdrant In-Memory Vector Store
-Semantic search and storage for competitor profiles
+Semantic search and storage for AI news article profiles
 """
 
 from typing import List, Dict, Any, Optional
@@ -10,15 +10,15 @@ from langchain_core.documents import Document
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
-from app.extraction.schemas import CompetitorProfile
+from app.extraction.schemas import NewsArticleProfile
 from app.config import AppConfig
 
 
-class CompetitorVectorStore:
+class NewsVectorStore:
     """
-    In-memory vector store for competitor profiles using Qdrant.
+    In-memory vector store for AI news article profiles using Qdrant.
     
-    Provides semantic search capabilities over competitor intelligence data.
+    Provides semantic search capabilities over news article data.
     Uses Google's text-embedding-004 model for 768-dimensional embeddings.
     Data is stored in-memory and does not persist between sessions.
     
@@ -30,9 +30,9 @@ class CompetitorVectorStore:
     
     Example:
         >>> config = AppConfig(google_api_key="your-key")
-        >>> store = CompetitorVectorStore("your-key", config)
-        >>> await store.ingest_profile(profile)
-        >>> results = await store.search_similar("SaaS pricing", k=3)
+        >>> store = NewsVectorStore("your-key", config)
+        >>> await store.ingest_article(profile)
+        >>> results = await store.search_similar("GPT-5 release", k=3)
     """
     
     def __init__(self, api_key: str, config: AppConfig):
@@ -98,15 +98,15 @@ class CompetitorVectorStore:
             # If it's a real error, it will surface on first operation
             pass
     
-    async def ingest_profile(self, profile: CompetitorProfile) -> str:
+    async def ingest_article(self, profile: NewsArticleProfile) -> str:
         """
-        Add a competitor profile to the vector store.
+        Add a news article profile to the vector store.
         
         Converts the profile to searchable text, generates embeddings,
         and stores in Qdrant for semantic search.
         
         Args:
-            profile: Competitor profile to ingest
+            profile: News article profile to ingest
         
         Returns:
             str: Document ID (UUID) assigned to this profile
@@ -116,8 +116,8 @@ class CompetitorVectorStore:
             Exception: If embedding or storage fails
         
         Example:
-            >>> profile = CompetitorProfile(company_name="Acme", ...)
-            >>> doc_id = await store.ingest_profile(profile)
+            >>> profile = NewsArticleProfile(headline="GPT-5 Release", ...)
+            >>> doc_id = await store.ingest_article(profile)
             >>> print(f"Stored with ID: {doc_id}")
         """
         # Skip profiles from failed scrapes
@@ -133,13 +133,17 @@ class CompetitorVectorStore:
         doc = Document(
             page_content=searchable_text,
             metadata={
-                "company_name": profile.company_name,
-                "website_url": profile.website_url,
-                "target_market": profile.target_market or "",
-                "num_features": len(profile.key_features),
-                "num_pricing_tiers": len(profile.pricing_tiers),
-                "num_usps": len(profile.unique_selling_points),
-                "has_tech_stack": len(profile.technology_stack) > 0,
+                "headline": profile.headline,
+                "article_url": profile.article_url,
+                "news_source": profile.news_source,
+                "publication_date": profile.publication_date or "",
+                "author": profile.author or "",
+                "num_technologies": len(profile.key_technologies),
+                "num_use_cases": len(profile.use_cases),
+                "num_industries": len(profile.affected_industries),
+                "potential_impact": profile.potential_impact.value if profile.potential_impact else "",
+                "relevance_score": profile.relevance_score or 0.0,
+                "recommended_priority": profile.recommended_priority or 5,
                 "extraction_timestamp": profile.extraction_timestamp,
                 "profile_id": str(uuid4())
             }
@@ -150,42 +154,57 @@ class CompetitorVectorStore:
         
         return ids[0]
     
-    def _create_searchable_text(self, profile: CompetitorProfile) -> str:
+    def _create_searchable_text(self, profile: NewsArticleProfile) -> str:
         """
-        Create searchable text representation of a profile.
+        Create searchable text representation of a news article profile.
         
         Formats all profile fields into a comprehensive text block
         that captures semantic meaning for embedding.
         
         Args:
-            profile: Competitor profile
+            profile: News article profile
         
         Returns:
             str: Formatted searchable text
         """
         sections = [
-            f"Company: {profile.company_name}",
-            f"Tagline: {profile.tagline or 'N/A'}",
-            f"Target Market: {profile.target_market or 'N/A'}",
+            f"Headline: {profile.headline}",
+            f"News Source: {profile.news_source}",
+            f"Publication Date: {profile.publication_date or 'N/A'}",
+            f"Author: {profile.author or 'N/A'}",
             "",
-            "Key Features:",
-            "\n".join([f"- {feature}" for feature in profile.key_features]),
+            "Article Summary:",
+            profile.article_summary,
             "",
-            "Unique Selling Points:",
-            "\n".join([f"- {usp}" for usp in profile.unique_selling_points]),
+            "Key Technologies:",
+            "\n".join([f"- {tech}" for tech in profile.key_technologies]),
             "",
-            "Technology Stack:",
-            ", ".join(profile.technology_stack) if profile.technology_stack else "N/A",
+            "Use Cases:",
+            "\n".join([f"- {use_case}" for use_case in profile.use_cases]),
             "",
-            "Pricing Tiers:",
+            "Affected Industries:",
+            ", ".join(profile.affected_industries) if profile.affected_industries else "N/A",
+            "",
+            "Key Insights:",
+            "\n".join([f"- {insight}" for insight in profile.key_insights]),
+            "",
         ]
         
-        # Add pricing information
-        for tier in profile.pricing_tiers:
-            tier_text = f"- {tier.name}: {tier.price or 'N/A'}"
-            if tier.features:
-                tier_text += f" (Features: {', '.join(tier.features[:3])})"
-            sections.append(tier_text)
+        # Add impact and relevance information
+        if profile.potential_impact:
+            sections.append(f"Potential Impact: {profile.potential_impact.value}")
+        
+        if profile.relevance_score is not None:
+            sections.append(f"Relevance Score: {profile.relevance_score:.2f}")
+        
+        if profile.recommended_priority is not None:
+            sections.append(f"Priority: {profile.recommended_priority}")
+        
+        # Add limitations if mentioned
+        if profile.limitations_mentioned:
+            sections.append("")
+            sections.append("Limitations Mentioned:")
+            sections.extend([f"- {limitation}" for limitation in profile.limitations_mentioned])
         
         return "\n".join(sections)
     
@@ -196,23 +215,23 @@ class CompetitorVectorStore:
         filter_metadata: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """
-        Search for similar competitors using semantic search.
+        Search for similar news articles using semantic search.
         
         Performs cosine similarity search over embedded profiles
         to find the most relevant matches to the query.
         
         Args:
-            query: Search query (e.g., "SaaS pricing strategies")
+            query: Search query (e.g., "LLM reasoning improvements")
             k: Number of results to return (default: 3)
-            filter_metadata: Optional metadata filters (e.g., {"target_market": "Enterprise"})
+            filter_metadata: Optional metadata filters (e.g., {"news_source": "TechCrunch"})
         
         Returns:
-            List[Dict]: List of search results with company, score, and content
+            List[Dict]: List of search results with headline, score, and content
         
         Example:
-            >>> results = await store.search_similar("enterprise pricing", k=2)
+            >>> results = await store.search_similar("GPT-5 capabilities", k=2)
             >>> for result in results:
-            ...     print(f"{result['company']}: {result['similarity_score']:.3f}")
+            ...     print(f"{result['headline']}: {result['similarity_score']:.3f}")
         """
         if not query or not query.strip():
             return []
@@ -229,13 +248,17 @@ class CompetitorVectorStore:
             formatted_results = []
             for doc, score in results:
                 formatted_results.append({
-                    "company": doc.metadata.get("company_name", "Unknown"),
-                    "website_url": doc.metadata.get("website_url", ""),
+                    "headline": doc.metadata.get("headline", "Unknown"),
+                    "article_url": doc.metadata.get("article_url", ""),
+                    "news_source": doc.metadata.get("news_source", "Unknown"),
                     "similarity_score": float(score),
                     "content": doc.page_content,
                     "metadata": doc.metadata,
-                    "target_market": doc.metadata.get("target_market", "N/A"),
-                    "num_features": doc.metadata.get("num_features", 0),
+                    "publication_date": doc.metadata.get("publication_date", "N/A"),
+                    "potential_impact": doc.metadata.get("potential_impact", "N/A"),
+                    "relevance_score": doc.metadata.get("relevance_score", 0.0),
+                    "recommended_priority": doc.metadata.get("recommended_priority", 5),
+                    "num_technologies": doc.metadata.get("num_technologies", 0),
                 })
             
             return formatted_results
@@ -245,9 +268,9 @@ class CompetitorVectorStore:
             print(f"Search error: {str(e)}")
             return []
     
-    async def get_all_profiles(self) -> List[Dict[str, Any]]:
+    async def get_all_articles(self) -> List[Dict[str, Any]]:
         """
-        Retrieve all stored competitor profiles.
+        Retrieve all stored news article profiles.
         
         Useful for generating comprehensive reports or debugging.
         
@@ -255,20 +278,21 @@ class CompetitorVectorStore:
             List[Dict]: List of all stored profiles with metadata
         
         Example:
-            >>> all_profiles = await store.get_all_profiles()
-            >>> print(f"Total competitors: {len(all_profiles)}")
+            >>> all_articles = await store.get_all_articles()
+            >>> print(f"Total articles: {len(all_articles)}")
         """
         try:
             # Use a broad query to get all documents
             results = await self.vectorstore.asimilarity_search(
-                "company business product",
-                k=100  # Assume max 100 competitors per session
+                "artificial intelligence news technology",
+                k=100  # Assume max 100 articles per session
             )
             
             return [
                 {
-                    "company": doc.metadata.get("company_name", "Unknown"),
-                    "website_url": doc.metadata.get("website_url", ""),
+                    "headline": doc.metadata.get("headline", "Unknown"),
+                    "article_url": doc.metadata.get("article_url", ""),
+                    "news_source": doc.metadata.get("news_source", "Unknown"),
                     "content": doc.page_content,
                     "metadata": doc.metadata
                 }
@@ -276,8 +300,46 @@ class CompetitorVectorStore:
             ]
         
         except Exception as e:
-            print(f"Error retrieving profiles: {str(e)}")
+            print(f"Error retrieving articles: {str(e)}")
             return []
+    
+    async def search_by_technology(self, technology: str, k: int = 5) -> List[Dict[str, Any]]:
+        """
+        Search for articles mentioning a specific technology.
+        
+        Args:
+            technology: Technology name (e.g., "GPT-4", "LangChain")
+            k: Number of results to return
+        
+        Returns:
+            List[Dict]: Matching articles
+        
+        Example:
+            >>> articles = await store.search_by_technology("GPT-5", k=3)
+        """
+        query = f"articles about {technology} technology development news"
+        return await self.search_similar(query, k=k)
+    
+    async def search_by_impact(self, impact_level: str, k: int = 5) -> List[Dict[str, Any]]:
+        """
+        Search for articles with specific impact level.
+        
+        Args:
+            impact_level: Impact level ("Low", "Medium", "High", "Critical")
+            k: Number of results to return
+        
+        Returns:
+            List[Dict]: Matching articles
+        
+        Example:
+            >>> high_impact = await store.search_by_impact("High", k=5)
+        """
+        filter_metadata = {"potential_impact": impact_level}
+        return await self.search_similar(
+            "high impact AI developments",
+            k=k,
+            filter_metadata=filter_metadata
+        )
     
     def get_collection_stats(self) -> Dict[str, Any]:
         """
@@ -288,7 +350,7 @@ class CompetitorVectorStore:
         
         Example:
             >>> stats = store.get_collection_stats()
-            >>> print(f"Stored profiles: {stats['vectors_count']}")
+            >>> print(f"Stored articles: {stats['vectors_count']}")
         """
         try:
             collection_info = self.client.get_collection(

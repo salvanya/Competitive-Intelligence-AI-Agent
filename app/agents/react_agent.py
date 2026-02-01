@@ -1,19 +1,19 @@
 """
 ReAct Agent Implementation
-Reason + Act pattern for competitive intelligence analysis
+Reason + Act pattern for AI news intelligence analysis
 """
 
 from typing import List, Optional, Dict, Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from app.config import AppConfig
-from app.agents.tools import CompetitorTools
-from app.extraction.schemas import CompetitorProfile
+from app.agents.tools import NewsAnalysisTools
+from app.extraction.schemas import NewsArticleProfile
 
 
 class ReActAgent:
     """
-    ReAct (Reasoning + Acting) agent for competitive analysis.
+    ReAct (Reasoning + Acting) agent for AI news analysis.
     
     Implements the ReAct pattern where the agent:
     1. Thinks (reasons about what to do)
@@ -27,12 +27,12 @@ class ReActAgent:
     Attributes:
         config: Application configuration
         llm: Gemini LLM configured for reasoning (temp=0.7)
-        tools: CompetitorTools instance for analysis
+        tools: NewsAnalysisTools instance for analysis
         max_iterations: Maximum reasoning loops (default: 10)
     
     Example:
         >>> agent = ReActAgent(api_key, config, tools)
-        >>> result = await agent.run("Compare pricing strategies")
+        >>> result = await agent.run("Identify the most critical AI developments")
         >>> print(result)
     """
     
@@ -40,7 +40,7 @@ class ReActAgent:
         self, 
         api_key: str, 
         config: AppConfig, 
-        tools: CompetitorTools,
+        tools: NewsAnalysisTools,
         max_iterations: int = 10
     ):
         """
@@ -49,7 +49,7 @@ class ReActAgent:
         Args:
             api_key: Google AI Studio API key
             config: Application configuration
-            tools: CompetitorTools instance with loaded profiles
+            tools: NewsAnalysisTools instance with loaded articles
             max_iterations: Maximum reasoning iterations (default: 10)
         
         Raises:
@@ -71,11 +71,12 @@ class ReActAgent:
         
         # Define available tool mappings
         self.tool_map = {
-            "search_competitors": self.tools.search_competitors,
-            "compare_pricing": self.tools.compare_pricing,
-            "identify_feature_gaps": self.tools.identify_feature_gaps,
-            "analyze_target_markets": self.tools.analyze_target_markets,
-            "get_technology_overview": self.tools.get_technology_overview,
+            "search_articles": self.tools.search_articles,
+            "analyze_relevance": self.tools.analyze_relevance,
+            "identify_technology_trends": self.tools.identify_technology_trends,
+            "analyze_industry_impact": self.tools.analyze_industry_impact,
+            "prioritize_articles": self.tools.prioritize_articles,
+            "identify_use_cases": self.tools.identify_use_cases,
             "get_comprehensive_summary": self.tools.get_comprehensive_summary,
         }
         
@@ -88,9 +89,9 @@ class ReActAgent:
         Returns:
             ChatPromptTemplate: Configured prompt
         """
-        system_prompt = """You are a competitive intelligence analyst using the ReAct (Reasoning + Acting) framework.
+        system_prompt = """You are an AI news intelligence analyst using the ReAct (Reasoning + Acting) framework.
 
-Your goal is to answer questions about competitors by:
+Your goal is to answer questions about AI news developments by:
 1. **Thinking** about what information you need
 2. **Acting** by calling appropriate tools
 3. **Observing** the tool outputs
@@ -99,28 +100,38 @@ Your goal is to answer questions about competitors by:
 
 **Available Tools:**
 
-1. **search_competitors(query: str, k: int = 3)**
-   - Semantic search for competitors matching a query
-   - Example: search_competitors("enterprise pricing models", k=2)
+1. **search_articles(query: str, k: int = 3)**
+   - Semantic search for news articles matching a query
+   - Example: search_articles("GPT-5 reasoning capabilities", k=2)
 
-2. **compare_pricing(companies: List[str] = None)**
-   - Compare pricing strategies across competitors
-   - Example: compare_pricing(["Company A", "Company B"])
+2. **analyze_relevance()**
+   - Analyze relevance scores across all articles
+   - Identifies high, medium, and low relevance developments
+   - Example: analyze_relevance()
 
-3. **identify_feature_gaps(reference_company: str = None)**
-   - Identify feature gaps and unique offerings
-   - Example: identify_feature_gaps("Company A")
+3. **identify_technology_trends()**
+   - Identify emerging technology trends and patterns
+   - Shows most mentioned technologies and high-impact tech
+   - Example: identify_technology_trends()
 
-4. **analyze_target_markets()**
-   - Analyze target market positioning
-   - Example: analyze_target_markets()
+4. **analyze_industry_impact()**
+   - Analyze which industries are most affected
+   - Groups impact by severity level
+   - Example: analyze_industry_impact()
 
-5. **get_technology_overview()**
-   - Analyze technology stack trends
-   - Example: get_technology_overview()
+5. **prioritize_articles()**
+   - Rank articles by recommended investigation priority (1-5)
+   - Groups articles by urgency
+   - Example: prioritize_articles()
 
-6. **get_comprehensive_summary()**
-   - Get overview of all competitors
+6. **identify_use_cases()**
+   - Identify and categorize practical use cases
+   - Shows most common applications
+   - Example: identify_use_cases()
+
+7. **get_comprehensive_summary()**
+   - Get overview of all news articles
+   - Shows impact distribution, sources, recent articles
    - Example: get_comprehensive_summary()
 
 **Response Format:**
@@ -152,16 +163,18 @@ Final Answer: [Your comprehensive analysis]
 
 **Guidelines:**
 - Think step-by-step
-- Use multiple tools if needed
+- Use multiple tools if needed to get comprehensive view
 - Be specific in your analysis
 - Cite evidence from tool outputs
 - Provide actionable insights
+- Focus on most critical/relevant developments
+- Note patterns and connections between articles
 """
         
         human_prompt = """Query: {query}
 
-Available Competitors:
-{competitor_list}
+Available Articles Overview:
+{article_list}
 
 Begin your analysis using the ReAct framework."""
         
@@ -173,7 +186,7 @@ Begin your analysis using the ReAct framework."""
     async def run(
         self, 
         query: str, 
-        profiles: Optional[List[CompetitorProfile]] = None
+        profiles: Optional[List[NewsArticleProfile]] = None
     ) -> str:
         """
         Execute the ReAct reasoning loop.
@@ -190,7 +203,7 @@ Begin your analysis using the ReAct framework."""
         
         Example:
             >>> result = await agent.run(
-            ...     "What are the main pricing differences between competitors?"
+            ...     "What are the most important AI developments to investigate?"
             ... )
         """
         if not query or not query.strip():
@@ -201,13 +214,16 @@ Begin your analysis using the ReAct framework."""
             profiles = self.tools.valid_profiles
         
         if not profiles:
-            return "No valid competitor profiles available for analysis"
+            return "No valid news article profiles available for analysis"
         
-        # Create competitor list summary
-        competitor_list = "\n".join([
-            f"- {p.company_name} ({p.website_url})"
-            for p in profiles
+        # Create article list summary
+        article_list = "\n".join([
+            f"- {p.headline} ({p.news_source}) - Impact: {p.potential_impact.value if p.potential_impact else 'N/A'}, Relevance: {p.relevance_score if p.relevance_score else 'N/A'}"
+            for p in profiles[:10]  # Show first 10
         ])
+        
+        if len(profiles) > 10:
+            article_list += f"\n... and {len(profiles) - 10} more articles"
         
         # Initialize conversation history
         conversation_history = []
@@ -219,7 +235,7 @@ Begin your analysis using the ReAct framework."""
                 # First iteration - use initial prompt
                 messages = self.prompt.format_messages(
                     query=query,
-                    competitor_list=competitor_list
+                    article_list=article_list
                 )
             else:
                 # Subsequent iterations - append history
@@ -301,15 +317,29 @@ Begin your analysis using the ReAct framework."""
         
         try:
             # Parse tool input
-            # Simple parsing - in production, would use more robust parsing
-            if tool_input.lower() in ['none', 'null', '']:
-                result = await tool_func() if tool_name == "search_competitors" else tool_func()
+            if tool_input.lower() in ['none', 'null', '', 'n/a']:
+                # Tool requires no arguments
+                result = await tool_func() if tool_name == "search_articles" else tool_func()
             else:
-                # For search_competitors, call with query
-                if tool_name == "search_competitors":
-                    # Extract query from input
+                # For search_articles, call with query
+                if tool_name == "search_articles":
+                    # Extract query from input (remove quotes if present)
                     query = tool_input.strip('"\'')
-                    result = await tool_func(query)
+                    
+                    # Check for k parameter
+                    k = 3  # default
+                    if ',' in query:
+                        parts = query.split(',')
+                        query = parts[0].strip()
+                        # Try to extract k value
+                        for part in parts[1:]:
+                            if 'k=' in part.lower():
+                                try:
+                                    k = int(part.split('=')[1].strip())
+                                except:
+                                    pass
+                    
+                    result = await tool_func(query, k=k)
                 else:
                     # For other tools, call without arguments
                     result = tool_func()

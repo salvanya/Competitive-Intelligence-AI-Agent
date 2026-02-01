@@ -1,22 +1,22 @@
 """
 Deterministic Extraction Chain (Temperature=0)
-LCEL chain for structured competitive intelligence extraction from web content
+LCEL chain for structured AI news analysis extraction from article content
 """
 
 from typing import Optional
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
-from app.extraction.schemas import CompetitorProfile
+from app.extraction.schemas import NewsArticleProfile
 from app.config import AppConfig
 
 
 class ExtractionChain:
     """
-    LCEL chain for structured data extraction from competitor websites.
+    LCEL chain for structured data extraction from AI news articles.
     
     Uses deterministic extraction (temperature=0) with JSON mode enforcement
-    to ensure reproducible, well-structured competitive intelligence data.
+    to ensure reproducible, well-structured news analysis data.
     
     Key Features:
     - Temperature=0 for deterministic output
@@ -34,8 +34,8 @@ class ExtractionChain:
     Example:
         >>> config = AppConfig(google_api_key="your-key")
         >>> extractor = ExtractionChain("your-key", config)
-        >>> profile = await extractor.extract("https://example.com", content)
-        >>> print(profile.company_name)
+        >>> profile = await extractor.extract("https://techcrunch.com/...", content)
+        >>> print(profile.headline)
     """
     
     def __init__(self, api_key: str, config: AppConfig):
@@ -65,7 +65,7 @@ class ExtractionChain:
         )
         
         # Initialize Pydantic parser
-        self.parser = PydanticOutputParser(pydantic_object=CompetitorProfile)
+        self.parser = PydanticOutputParser(pydantic_object=NewsArticleProfile)
         
         # Create prompt template
         self.prompt = ChatPromptTemplate.from_messages([
@@ -89,36 +89,89 @@ class ExtractionChain:
         Returns:
             str: System prompt with extraction instructions
         """
-        return """You are a competitive intelligence extraction specialist with expertise in analyzing competitor websites.
+        return """You are an AI news analysis specialist with expertise in extracting structured insights from technology and AI news articles.
 
-Your task is to extract structured, factual information from website content with high precision and accuracy.
+Your task is to extract comprehensive, structured information from news articles with high precision and analytical depth.
 
 EXTRACTION RULES:
-1. **Factual Only**: Extract ONLY information explicitly stated in the content
-2. **No Inference**: Do not make assumptions or infer information not directly stated
-3. **Null for Missing**: Use null/empty values for fields not found in content
-4. **Exact Quotes**: For pricing, preserve exact format (e.g., "$99/month", "Contact Sales")
-5. **Conciseness**: Keep features/USPs to 5-10 words each
-6. **Technology Stack**: Extract mentioned frameworks, cloud providers, certifications (e.g., "AWS", "React", "SOC 2")
 
-PRICING NORMALIZATION:
-- If pricing says "Custom", "Enterprise", "Contact us", "Get a quote" → use "Contact Sales"
-- If specific price is stated → preserve exact format including currency and period
-- If no pricing found → leave pricing_tiers empty
+1. **Factual Accuracy**: Extract ONLY information explicitly stated in the article
+2. **No Inference**: Do not make assumptions beyond what is written
+3. **Null for Missing**: Use null/empty values for fields not found in the content
+4. **Exact Quotes**: Preserve exact terminology for technologies and key concepts
+5. **Comprehensive Coverage**: Extract all relevant technologies, use cases, and industries mentioned
 
-FEATURE EXTRACTION:
-- Focus on top 5-10 most important features
-- Be specific and actionable (e.g., "Real-time collaboration" not "Collaboration")
-- Avoid marketing fluff (e.g., skip "Best-in-class", "Industry-leading")
+FIELD-SPECIFIC GUIDELINES:
+
+**headline**: Extract the exact article title/headline
+
+**news_source**: Identify the publication (e.g., "TechCrunch", "VentureBeat", "The Verge")
+
+**publication_date**: Extract the publication date if mentioned (ISO format preferred, e.g., "2026-01-15")
+
+**author**: Extract author name(s) if mentioned
+
+**article_summary**: Create a concise 2-3 sentence summary capturing:
+- What happened (the main announcement/development)
+- Why it matters (significance)
+- Key implications
+
+**key_technologies**: List ALL AI technologies, models, frameworks, or tools mentioned:
+- Examples: "GPT-4", "LangChain", "RAG", "Claude", "Stable Diffusion", "Transformers"
+- Include versions when specified (e.g., "GPT-4 Turbo")
+- Include technical terms (e.g., "Fine-tuning", "Prompt Engineering")
+
+**use_cases**: Extract practical applications and use cases described:
+- Be specific (e.g., "Medical diagnosis assistance" not just "Healthcare")
+- Focus on actionable applications
+- Include examples mentioned in the article
+
+**affected_industries**: List industries that could be impacted:
+- Examples: "Healthcare", "Finance", "Education", "Software Development", "Legal"
+- Base on article content, not generic speculation
+
+**potential_impact**: Assess overall impact level:
+- "Critical": Paradigm-shifting developments (e.g., AGI breakthrough, major regulatory change)
+- "High": Significant advancement with broad implications
+- "Medium": Important development with specific applications
+- "Low": Incremental improvement or niche application
+
+**relevance_score** (0.0 to 1.0): Rate how relevant this is to AI practitioners/businesses:
+- 0.9-1.0: Must-know development (major model release, regulatory change)
+- 0.7-0.8: Very important (significant capability advancement)
+- 0.5-0.6: Important (useful tool/technique)
+- 0.3-0.4: Moderately interesting (niche application)
+- 0.0-0.2: Low relevance (minor update)
+
+**recommended_priority** (1-5): Suggest investigation priority:
+- 1: Investigate immediately (time-sensitive, high impact)
+- 2: Investigate soon (important but not urgent)
+- 3: Investigate when relevant (useful to know)
+- 4: Investigate if interested (nice to have)
+- 5: Optional (low priority)
+
+**key_insights**: Extract 3-5 main takeaways:
+- Specific facts, statistics, or claims
+- Notable quotes from experts
+- Surprising or counterintuitive findings
+
+**limitations_mentioned**: Extract any limitations, concerns, or risks discussed:
+- Technical limitations
+- Ethical concerns
+- Safety issues
+- Cost/accessibility barriers
+- Regulatory challenges
 
 QUALITY CHECKS:
-- Company name must not be empty or generic (e.g., not "Company", "Business")
-- Tagline should be concise (under 150 characters)
-- Target market should be specific (e.g., "Enterprise SaaS companies", not just "Businesses")
+- Headline must not be empty or generic
+- Article summary should be 2-3 complete sentences
+- At least 1 technology should be identified (if it's an AI article)
+- Relevance score should reflect actual importance, not hype
+- Impact assessment should be evidence-based
 
 {format_instructions}
 
-Remember: Precision and accuracy are critical. When in doubt, omit rather than guess."""
+Remember: Precision and analytical depth are critical. Extract meaningful insights, not just surface-level information."""
     
     def _get_human_prompt(self) -> str:
         """
@@ -127,36 +180,36 @@ Remember: Precision and accuracy are critical. When in doubt, omit rather than g
         Returns:
             str: Human prompt with input variables
         """
-        return """Website URL: {url}
+        return """Article URL: {url}
 
-Website Content:
+Article Content:
 {content}
 
-Extract competitive intelligence from this website following the system instructions.
-Return valid JSON matching the CompetitorProfile schema."""
+Extract comprehensive AI news analysis from this article following the system instructions.
+Return valid JSON matching the NewsArticleProfile schema."""
     
-    async def extract(self, url: str, content: str) -> CompetitorProfile:
+    async def extract(self, url: str, content: str) -> NewsArticleProfile:
         """
-        Extract structured competitor profile from scraped content.
+        Extract structured news article profile from scraped content.
         
         Invokes the LCEL chain asynchronously to extract structured data.
-        Automatically sets the website_url field after extraction.
+        Automatically sets the article_url field after extraction.
         
         Args:
-            url: Website URL (used for reference, not extracted)
-            content: Scraped website content (Markdown or text)
+            url: Article URL (used for reference, not extracted)
+            content: Scraped article content (Markdown or text)
         
         Returns:
-            CompetitorProfile: Validated competitor profile
+            NewsArticleProfile: Validated news article profile
         
         Raises:
             ValueError: If content is empty or too short
             Exception: If LLM extraction fails
         
         Example:
-            >>> content = "# Acme Corp\\nThe best SaaS platform..."
-            >>> profile = await extractor.extract("https://acme.com", content)
-            >>> print(f"Extracted: {profile.company_name}")
+            >>> content = "# OpenAI Releases GPT-5\\nOpenAI announced..."
+            >>> profile = await extractor.extract("https://techcrunch.com/...", content)
+            >>> print(f"Extracted: {profile.headline}")
         """
         # Validate inputs
         if not content or len(content.strip()) < 50:
@@ -176,15 +229,17 @@ Return valid JSON matching the CompetitorProfile schema."""
             })
             
             # Ensure URL is set correctly (in case LLM didn't extract it properly)
-            result.website_url = url
+            result.article_url = url
             
             return result
         
         except Exception as e:
             # Create error profile if extraction fails
-            error_profile = CompetitorProfile(
-                company_name=url,  # Use URL as fallback name
-                website_url=url,
+            error_profile = NewsArticleProfile(
+                headline=url,  # Use URL as fallback headline
+                article_url=url,
+                news_source="Unknown",
+                article_summary=f"Extraction failed: {str(e)}",
                 scrape_success=False,
                 error_message=f"Extraction failed: {str(e)}"
             )
@@ -193,7 +248,7 @@ Return valid JSON matching the CompetitorProfile schema."""
     async def extract_batch(
         self, 
         url_content_pairs: list[tuple[str, str]]
-    ) -> list[CompetitorProfile]:
+    ) -> list[NewsArticleProfile]:
         """
         Extract profiles from multiple URL/content pairs.
         
@@ -204,12 +259,12 @@ Return valid JSON matching the CompetitorProfile schema."""
             url_content_pairs: List of (url, content) tuples
         
         Returns:
-            list[CompetitorProfile]: List of extracted profiles
+            list[NewsArticleProfile]: List of extracted profiles
         
         Example:
             >>> pairs = [
-            ...     ("https://comp1.com", content1),
-            ...     ("https://comp2.com", content2)
+            ...     ("https://techcrunch.com/ai1", content1),
+            ...     ("https://venturebeat.com/ai2", content2)
             ... ]
             >>> profiles = await extractor.extract_batch(pairs)
         """
@@ -221,9 +276,11 @@ Return valid JSON matching the CompetitorProfile schema."""
                 profiles.append(profile)
             except Exception as e:
                 # Create error profile and continue
-                error_profile = CompetitorProfile(
-                    company_name=url,
-                    website_url=url,
+                error_profile = NewsArticleProfile(
+                    headline=url,
+                    article_url=url,
+                    news_source="Unknown",
+                    article_summary=f"Extraction error: {str(e)}",
                     scrape_success=False,
                     error_message=str(e)
                 )
@@ -247,7 +304,7 @@ Return valid JSON matching the CompetitorProfile schema."""
         return {
             "model": self.config.GEMINI_MODEL,
             "temperature": self.config.EXTRACTION_TEMPERATURE,
-            "schema": "CompetitorProfile",
+            "schema": "NewsArticleProfile",
             "json_mode": True,
             "deterministic": True
         }

@@ -1,6 +1,6 @@
-# 🔍 Competitive Intelligence Synthesis Agent
+# 📰 AI News Summarizer & Analyzer
 
-AI-powered competitive analysis using Google Gemini, LangChain, and semantic search.
+AI-powered news intelligence using Google Gemini, LangChain, and semantic search.
 
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg)
 ![LangChain](https://img.shields.io/badge/LangChain-0.3.15-green.svg)
@@ -11,11 +11,11 @@ AI-powered competitive analysis using Google Gemini, LangChain, and semantic sea
 
 ## 🎯 Features
 
-- **🌐 Web Scraping:** Automated competitor website analysis using crawl4ai
+- **🌐 Article Scraping:** Automated AI news article extraction using crawl4ai
 - **🔍 Structured Extraction:** Temperature=0 deterministic data extraction with Pydantic validation
-- **📊 Semantic Search:** Vector-based competitor similarity search using Qdrant
+- **📊 Semantic Search:** Vector-based news article similarity search using Qdrant
 - **🤖 ReAct Reasoning:** Multi-step agent decision-making with chain-of-thought
-- **✍️ Synthesis Reports:** Creative analysis with few-shot prompting (Temperature=0.7)
+- **✍️ Intelligence Reports:** Creative analysis with few-shot prompting (Temperature=0.7)
 - **⚡ Real-time Streaming:** Live report generation in the UI
 
 ---
@@ -35,7 +35,7 @@ AI-powered competitive analysis using Google Gemini, LangChain, and semantic sea
 
 ### **System Components**
 
-- **Scraping Module:** Async concurrent web scraping with error handling
+- **Scraping Module:** Async concurrent article scraping with error handling
 - **Extraction Chain:** LCEL chain with JSON mode enforcement
 - **Vector Store:** In-memory Qdrant for semantic search
 - **ReAct Agent:** Reasoning + Acting pattern with tool calling
@@ -54,8 +54,8 @@ AI-powered competitive analysis using Google Gemini, LangChain, and semantic sea
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/competitive-intelligence-agent.git
-cd competitive-intelligence-agent
+git clone https://github.com/yourusername/ai-news-summarizer.git
+cd ai-news-summarizer
 ```
 
 2. **Create virtual environment**
@@ -100,17 +100,25 @@ Navigate to `http://localhost:8501`
 ### **Basic Workflow**
 
 1. **Enter API Key:** Paste your Google AI Studio API key in the sidebar
-2. **Add URLs:** Enter 1-3 competitor URLs (e.g., `https://competitor.com`)
-3. **Specify Objective:** Describe what you want to analyze (pricing, features, market positioning)
+2. **Add URLs:** Enter 1-5 AI news article URLs (e.g., from TechCrunch, VentureBeat, The Verge)
+3. **Specify Objective:** Describe what you want to analyze (technology trends, industry impact, use cases)
 4. **Generate Analysis:** Click the button and watch real-time report generation
 5. **Download Report:** Save the analysis as a Markdown file
 
 ### **Example Analysis Objectives**
 
-- "Analyze pricing strategies and identify opportunities for differentiation"
-- "Compare key features and identify market gaps"
-- "Evaluate target markets and positioning strategies"
-- "Assess technology stacks and implementation approaches"
+- "Analyze AI news developments focusing on technology trends and industry impact"
+- "Identify the most critical AI developments and provide a prioritized investigation roadmap"
+- "Evaluate emerging AI technologies, practical use cases, and affected industries"
+- "Assess the relevance and potential impact of recent AI announcements"
+
+### **Recommended News Sources**
+
+- **TechCrunch AI:** https://techcrunch.com/category/artificial-intelligence/
+- **VentureBeat AI:** https://venturebeat.com/category/ai/
+- **The Verge AI:** https://www.theverge.com/ai-artificial-intelligence
+- **Ars Technica AI:** https://arstechnica.com/tag/artificial-intelligence/
+- **Wired AI:** https://www.wired.com/tag/artificial-intelligence/
 
 ---
 
@@ -133,12 +141,19 @@ await rate_limiter.acquire()  # Waits if limit reached
 
 ### **Pydantic Schemas**
 ```python
-class CompetitorProfile(BaseModel):
-    company_name: str
-    pricing_tiers: List[PricingTier]
-    key_features: List[str]
-    unique_selling_points: List[str]
-    technology_stack: List[str]
+class NewsArticleProfile(BaseModel):
+    headline: str
+    article_url: str
+    news_source: str
+    publication_date: Optional[str]
+    article_summary: str
+    key_technologies: List[str]
+    use_cases: List[str]
+    affected_industries: List[str]
+    potential_impact: Optional[ImpactLevel]
+    relevance_score: Optional[float]
+    recommended_priority: Optional[int]
+    key_insights: List[str]
     # ... full schema validation
 ```
 
@@ -155,23 +170,23 @@ chain = (
 
 ## 📂 Project Structure
 ```
-competitive-intelligence-agent/
+ai-news-summarizer/
 ├── app/
 │   ├── main.py                      # Streamlit UI entry point
 │   ├── config.py                    # AppConfig (Pydantic model)
 │   │
 │   ├── scraping/
-│   │   └── crawler.py               # CompetitorCrawler (crawl4ai)
+│   │   └── crawler.py               # NewsArticleCrawler (crawl4ai)
 │   │
 │   ├── extraction/
-│   │   ├── schemas.py               # CompetitorProfile, PricingTier
+│   │   ├── schemas.py               # NewsArticleProfile, ImpactLevel
 │   │   └── chain.py                 # ExtractionChain (LCEL, temp=0)
 │   │
 │   ├── vectorstore/
-│   │   └── store.py                 # CompetitorVectorStore (Qdrant)
+│   │   └── store.py                 # NewsVectorStore (Qdrant)
 │   │
 │   ├── agents/
-│   │   ├── tools.py                 # CompetitorTools (ReAct tools)
+│   │   ├── tools.py                 # NewsAnalysisTools (ReAct tools)
 │   │   └── react_agent.py           # ReActAgent (reasoning)
 │   │
 │   ├── synthesis/
@@ -208,10 +223,10 @@ competitive-intelligence-agent/
 ### **Option 2: Local Docker**
 ```bash
 # Build image
-docker build -t comp-intel-agent .
+docker build -t ai-news-summarizer .
 
 # Run container
-docker run -p 8501:8501 comp-intel-agent
+docker run -p 8501:8501 ai-news-summarizer
 ```
 
 ### **Option 3: Production Server**
@@ -257,27 +272,29 @@ streamlit run app/main.py --server.port 8501 --server.headless true
 
 ### **Generated Report Sections**
 
-- **Executive Summary:** Key findings and recommendations
-- **Market Positioning Analysis:** Target markets and value propositions
-- **Pricing Strategy Comparison:** Detailed pricing analysis
-- **Feature Analysis:** Common features vs. unique differentiators
-- **Competitive Advantages & Weaknesses:** SWOT-style analysis
-- **Strategic Recommendations:** Actionable insights
+- **Executive Summary:** Key findings and critical developments
+- **Key AI Developments:** Detailed analysis of significant news items
+- **Technology Trend Analysis:** Emerging technologies and convergence patterns
+- **Industry Impact Assessment:** Sector-specific insights and transformation areas
+- **Use Case Opportunities:** Practical applications and business opportunities
+- **Recommended Investigation Priority:** Actionable reading order with rationale
+- **Strategic Insights:** Forward-looking analysis and recommendations
 
 ---
 
 ## 🔍 Advanced Features
 
-### **Custom Tool Integration**
+### **Custom Analysis Tools**
 
-Add new analysis tools to the ReAct agent:
-```python
-# In app/agents/tools.py
-def analyze_social_presence(self) -> str:
-    """Custom tool for social media analysis"""
-    # Your implementation
-    pass
-```
+The ReAct agent includes specialized tools:
+
+- `search_articles()` - Semantic search for relevant articles
+- `analyze_relevance()` - Statistical analysis of relevance scores
+- `identify_technology_trends()` - Technology mention frequency analysis
+- `analyze_industry_impact()` - Industry-specific impact assessment
+- `prioritize_articles()` - Priority-based ranking system
+- `identify_use_cases()` - Use case categorization
+- `get_comprehensive_summary()` - Overall news intelligence summary
 
 ### **Custom Synthesis Prompts**
 
@@ -312,7 +329,7 @@ pip install -r requirements.txt
 **3. Rate Limit Errors**
 
 - Wait 60 seconds between analyses
-- Reduce number of competitors
+- Reduce number of articles
 - Upgrade to paid API tier
 
 **4. Scraping Failures**
@@ -320,6 +337,7 @@ pip install -r requirements.txt
 - Verify URLs are accessible
 - Check for anti-bot protection
 - Try fewer URLs
+- Some news sites may block automated access
 
 ---
 
@@ -387,16 +405,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🗺️ Roadmap
 
-- [ ] Multi-language support
-- [ ] PDF report export
-- [ ] Batch processing for >3 competitors
-- [ ] Historical comparison tracking
-- [ ] Integration with business intelligence tools
+- [ ] Multi-language support for international news
+- [ ] PDF report export with charts/visualizations
+- [ ] Batch processing for >5 articles
+- [ ] Historical trend tracking and comparison
+- [ ] Integration with RSS feeds for automated monitoring
 - [ ] Custom report templates
 - [ ] API endpoint for programmatic access
+- [ ] Sentiment analysis integration
+- [ ] Alert system for critical developments
 
 ---
 
 **⭐ If you find this project useful, please give it a star!**
-Terminal Instructions:
-bash# No installation needed - just save the file
