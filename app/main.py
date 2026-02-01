@@ -77,6 +77,9 @@ def initialize_session_state():
     if 'api_key' not in st.session_state:
         st.session_state.api_key = None
     
+    if 'api_key_input' not in st.session_state:
+        st.session_state.api_key_input = ""
+    
     if 'report_generated' not in st.session_state:
         st.session_state.report_generated = False
     
@@ -87,21 +90,33 @@ def initialize_session_state():
         st.session_state.analyzed_articles = []
 
 
+def set_api_key():
+    """Callback function to set API key when button is clicked."""
+    if st.session_state.api_key_input.strip():
+        st.session_state.api_key = st.session_state.api_key_input.strip()
+
+
 def render_sidebar():
     """Render sidebar with configuration options."""
     with st.sidebar:
         st.header("⚙️ Configuration")
         
-        # API Key Input
-        api_key = st.text_input(
+        # API Key Input with submit button
+        st.text_input(
             "Google AI Studio API Key",
             type="password",
             help="Get your key at https://aistudio.google.com/app/apikey",
-            placeholder="Enter your API key here..."
+            placeholder="Enter your API key here...",
+            key="api_key_input",
+            on_change=None  # Don't auto-submit
         )
         
-        if api_key:
-            st.session_state.api_key = api_key
+        # Submit button for API key
+        if st.button("Submit API Key", use_container_width=True, type="primary"):
+            set_api_key()
+        
+        # Show API key status
+        if st.session_state.api_key:
             st.success("✅ API Key loaded")
         else:
             st.warning("⚠️ API key required")
@@ -148,7 +163,7 @@ Scraper: requests + BeautifulSoup
 
 def render_header():
     """Render main header."""
-    st.markdown('<p class="main-header">📰 AI News Summarizer & Analyzer</p>', 
+    st.markdown('<h1 style="color: #1f77b4;">AI News Summarizer & Analyzer</h1>', 
                 unsafe_allow_html=True)
     st.markdown(
         '<p class="sub-header">AI-powered news intelligence using Google Gemini, '
@@ -238,6 +253,24 @@ async def run_analysis(
         successful_scrapes = sum(1 for content in scraped_data.values() if content)
         st.success(f"✅ Scraped {successful_scrapes}/{len(urls)} article(s) successfully")
         
+        # Show detailed diagnostics
+        diagnostics = crawler.get_scrape_diagnostics()
+        with st.expander("📋 Scraping Details", expanded=(successful_scrapes < len(urls))):
+            for url, details in diagnostics.items():
+                if details.get('success'):
+                    st.success(f"✅ **{url}**")
+                    st.write(f"- Page Title: {details.get('page_title', 'N/A')}")
+                    st.write(f"- Content Length: {details.get('extracted_length', 0):,} chars")
+                    st.write(f"- Status Code: {details.get('status_code', 'N/A')}")
+                else:
+                    st.error(f"❌ **{url}**")
+                    st.write(f"- Error: {details.get('error', 'Unknown')}")
+                    if 'status_code' in details:
+                        st.write(f"- Status Code: {details.get('status_code')}")
+                    if 'page_title' in details:
+                        st.write(f"- Page Title: {details.get('page_title')}")
+                st.markdown("---")
+        
         # Step 2: Extraction (20% -> 50% progress)
         status_text.markdown("### 🔍 Phase 2: News Intelligence Extraction")
         st.info("Extracting structured news insights...")
@@ -320,7 +353,7 @@ async def run_analysis(
     # Display report in separate container
     with report_container:
         st.markdown("---")
-        st.markdown("## 📄 AI News Analysis Report")
+        st.markdown("## AI News Analysis Report")
         
         # Create placeholder for streaming report
         report_placeholder = st.empty()
@@ -339,7 +372,6 @@ async def run_analysis(
         with progress_container:
             progress_bar.progress(1.0)
             status_text.markdown("### ✅ Analysis Complete!")
-            st.balloons()
 
 
 def main():
@@ -450,13 +482,15 @@ def main():
     
     # Show summary before generation
     with st.expander("📋 Analysis Summary", expanded=True):
+        url_list = "\n".join([f"- {url}" for url in valid_urls])
         st.markdown(f"""
-        **Articles to analyze:** {len(valid_urls)}
-        {chr(10).join([f"- {url}" for url in valid_urls])}
-        
-        **Analysis objective:** {objective[:200]}{"..." if len(objective) > 200 else ""}
-        
-        **Estimated time:** ~{len(valid_urls) * 30} seconds
+**Articles to analyze:** {len(valid_urls)}
+
+{url_list}
+
+**Analysis objective:** {objective[:200]}{"..." if len(objective) > 200 else ""}
+
+**Estimated time:** ~{len(valid_urls) * 30} seconds
         """)
     
     # Analysis execution
