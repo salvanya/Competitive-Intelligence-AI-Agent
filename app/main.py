@@ -13,7 +13,7 @@ from typing import List, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.config import AppConfig
-from app.scraping.crawler import NewsArticleCrawler
+from app.scraping.simple_crawler import SimpleNewsArticleCrawler
 from app.extraction.chain import ExtractionChain
 from app.extraction.schemas import NewsArticleProfile
 from app.vectorstore.store import NewsVectorStore
@@ -126,6 +126,7 @@ def render_sidebar():
 Model: gemini-2.0-flash
 Extraction Temp: 0.0
 Synthesis Temp: 0.7
+Scraper: requests + BeautifulSoup
         """)
         
         st.markdown("---")
@@ -139,7 +140,7 @@ Synthesis Temp: 0.7
         - Google Gemini 2.0 Flash
         - LangChain LCEL
         - Qdrant Vector Store
-        - crawl4ai Web Scraper
+        - Simple HTTP Scraper (Windows-compatible)
         
         [View Documentation](#) | [GitHub](#)
         """)
@@ -225,7 +226,7 @@ async def run_analysis(
         def update_progress(msg: str):
             status_text.markdown(f"**Current:** {msg}")
         
-        crawler = NewsArticleCrawler(
+        crawler = SimpleNewsArticleCrawler(
             progress_callback=update_progress,
             timeout=config.SCRAPE_TIMEOUT
         )
@@ -485,6 +486,7 @@ def main():
                 2. Verify API key is valid
                 3. Ensure URLs are accessible
                 4. Try with fewer articles
+                5. Some websites may block automated scraping
                 """)
     
     # Download report button (if report exists)
@@ -507,7 +509,7 @@ def main():
     st.markdown("""
     <div style='text-align: center; color: #666; padding: 2rem 0;'>
         <p><strong>AI News Summarizer & Analyzer</strong></p>
-        <p>Built with Google Gemini 2.0 Flash | LangChain | Qdrant | crawl4ai</p>
+        <p>Built with Google Gemini 2.0 Flash | LangChain | Qdrant | Simple HTTP Scraper</p>
         <p style='font-size: 0.9rem;'>
             <a href='#' style='color: #1f77b4; text-decoration: none;'>Documentation</a> • 
             <a href='#' style='color: #1f77b4; text-decoration: none;'>GitHub</a> • 

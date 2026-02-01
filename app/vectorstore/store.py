@@ -130,6 +130,7 @@ class NewsVectorStore:
         searchable_text = self._create_searchable_text(profile)
         
         # Create LangChain document with metadata
+        # IMPORTANT: Convert all enum values to strings for metadata storage
         doc = Document(
             page_content=searchable_text,
             metadata={
@@ -141,6 +142,7 @@ class NewsVectorStore:
                 "num_technologies": len(profile.key_technologies),
                 "num_use_cases": len(profile.use_cases),
                 "num_industries": len(profile.affected_industries),
+                # Convert ImpactLevel enum to string
                 "potential_impact": profile.potential_impact.value if profile.potential_impact else "",
                 "relevance_score": profile.relevance_score or 0.0,
                 "recommended_priority": profile.recommended_priority or 5,
@@ -255,6 +257,7 @@ class NewsVectorStore:
                     "content": doc.page_content,
                     "metadata": doc.metadata,
                     "publication_date": doc.metadata.get("publication_date", "N/A"),
+                    # potential_impact is already a string in metadata
                     "potential_impact": doc.metadata.get("potential_impact", "N/A"),
                     "relevance_score": doc.metadata.get("relevance_score", 0.0),
                     "recommended_priority": doc.metadata.get("recommended_priority", 5),
@@ -362,7 +365,7 @@ class NewsVectorStore:
                 "vectors_count": collection_info.vectors_count,
                 "points_count": collection_info.points_count,
                 "vector_size": self.config.VECTOR_SIZE,
-                "status": collection_info.status.value if collection_info.status else "unknown"
+                "status": collection_info.status.value if hasattr(collection_info.status, 'value') else str(collection_info.status)
             }
         
         except Exception as e:

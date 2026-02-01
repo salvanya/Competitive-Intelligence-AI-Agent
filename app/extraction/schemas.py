@@ -100,6 +100,7 @@ class NewsArticleProfile(BaseModel):
     )
     
     # Impact Assessment
+    # CHANGED: Allow string or ImpactLevel, convert to ImpactLevel
     potential_impact: Optional[ImpactLevel] = Field(
         default=None,
         description="Overall potential impact level (Low, Medium, High, Critical)"
@@ -185,6 +186,37 @@ class NewsArticleProfile(BaseModel):
         if not v.startswith(('http://', 'https://')):
             raise ValueError("URL must start with http:// or https://")
         return v
+    
+    @field_validator('potential_impact', mode='before')
+    @classmethod
+    def validate_impact_level(cls, v):
+        """
+        Convert string to ImpactLevel enum if needed.
+        
+        Args:
+            v: Impact level (string or ImpactLevel)
+        
+        Returns:
+            Optional[ImpactLevel]: Validated impact level enum
+        """
+        if v is None:
+            return None
+        
+        # If already an ImpactLevel, return it
+        if isinstance(v, ImpactLevel):
+            return v
+        
+        # If string, convert to ImpactLevel
+        if isinstance(v, str):
+            v = v.strip()
+            # Try to match case-insensitively
+            for level in ImpactLevel:
+                if level.value.lower() == v.lower():
+                    return level
+            # If no match, return None
+            return None
+        
+        return None
     
     @field_validator('relevance_score')
     @classmethod
@@ -287,10 +319,10 @@ class NewsArticleProfile(BaseModel):
         
         return "\n".join(sections)
     
-    class Config:
-        """Pydantic configuration."""
-        use_enum_values = True
-        json_schema_extra = {
+    # CHANGED: Updated Config for Pydantic v2
+    model_config = {
+        "use_enum_values": False,  # Keep as enum objects, not strings
+        "json_schema_extra": {
             "example": {
                 "headline": "OpenAI Announces GPT-5 with Advanced Reasoning Capabilities",
                 "article_url": "https://techcrunch.com/2026/01/15/openai-gpt5-announcement",
@@ -334,3 +366,4 @@ class NewsArticleProfile(BaseModel):
                 "error_message": None
             }
         }
+    }

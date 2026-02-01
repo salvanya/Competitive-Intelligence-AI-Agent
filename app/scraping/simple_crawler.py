@@ -1,27 +1,33 @@
 """
-Web Scraping using crawl4ai
-Async crawler for AI news article content extraction
+Windows-Compatible Web Scraper
+Simple HTTP-based scraper using requests + BeautifulSoup
+Replaces crawl4ai for Windows compatibility
 """
 
 import asyncio
+import requests
 from typing import Optional, Callable, Dict
-from crawl4ai import AsyncWebCrawler
+from bs4 import BeautifulSoup
+from markdownify import markdownify as md
+from urllib.parse import urlparse
 
 
-class NewsArticleCrawler:
+class SimpleNewsArticleCrawler:
     """
-    Async web crawler for AI news articles using crawl4ai.
+    Simple HTTP-based web crawler for AI news articles.
     
-    Provides concurrent scraping capabilities with progress callbacks
-    for real-time UI updates. Handles errors gracefully and returns
-    cleaned Markdown content for downstream processing.
+    Windows-compatible alternative to crawl4ai that uses:
+    - requests for HTTP fetching
+    - BeautifulSoup for HTML parsing
+    - markdownify for content conversion
     
     Attributes:
         progress_callback: Optional function to call with progress updates
         timeout: Scraping timeout in seconds
+        headers: HTTP headers to mimic browser requests
     
     Example:
-        >>> crawler = NewsArticleCrawler(progress_callback=st.status.update)
+        >>> crawler = SimpleNewsArticleCrawler(progress_callback=st.status.update)
         >>> results = await crawler.scrape_multiple(["https://techcrunch.com/..."])
         >>> content = results["https://techcrunch.com/..."]
     """
@@ -40,6 +46,17 @@ class NewsArticleCrawler:
         """
         self.progress_callback = progress_callback
         self.timeout = timeout
+        
+        # Mimic browser to avoid 403 errors
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
+        }
     
     def _update_progress(self, message: str) -> None:
         """
@@ -55,13 +72,79 @@ class NewsArticleCrawler:
                 # Silently fail if callback errors (don't break scraping)
                 print(f"Progress callback error: {str(e)}")
     
+    def _extract_article_content(self, soup: BeautifulSoup, url: str) -> str:
+        """
+        Extract main article content from HTML.
+        
+        Uses heuristics to identify article content:
+        1. Look for <article> tags
+        2. Look for common article class names
+        3. Remove navigation, ads, scripts, styles
+        
+        Args:
+            soup: BeautifulSoup parsed HTML
+            url: Original URL (for domain-specific handling)
+        
+        Returns:
+            str: Extracted article content as Markdown
+        """
+        # Remove unwanted elements
+        for element in soup(['script', 'style', 'nav', 'header', 'footer', 
+                            'aside', 'iframe', 'noscript']):
+            element.decompose()
+        
+        # Remove common ad/social classes
+        for classname in ['advertisement', 'social-share', 'newsletter', 
+                         'related-posts', 'comments', 'sidebar']:
+            for element in soup.find_all(class_=lambda x: x and classname in x.lower()):
+                element.decompose()
+        
+        # Try to find article content
+        article_content = None
+        
+        # Strategy 1: Look for <article> tag
+        article_tag = soup.find('article')
+        if article_tag:
+            article_content = article_tag
+        
+        # Strategy 2: Look for common article containers
+        if not article_content:
+            for selector in [
+                {'class': lambda x: x and 'article' in x.lower()},
+                {'class': lambda x: x and 'post-content' in x.lower()},
+                {'class': lambda x: x and 'entry-content' in x.lower()},
+                {'id': lambda x: x and 'article' in x.lower()},
+                {'role': 'main'}
+            ]:
+                article_content = soup.find('div', selector)
+                if article_content:
+                    break
+        
+        # Strategy 3: Use the main tag
+        if not article_content:
+            article_content = soup.find('main')
+        
+        # Fallback: Use body
+        if not article_content:
+            article_content = soup.find('body')
+        
+        if not article_content:
+            return ""
+        
+        # Convert to Markdown
+        markdown_content = md(str(article_content), heading_style="ATX")
+        
+        # Clean up excessive whitespace
+        lines = [line.strip() for line in markdown_content.split('\n')]
+        cleaned_lines = [line for line in lines if line]
+        
+        return '\n\n'.join(cleaned_lines)
+    
     async def scrape_url(self, url: str) -> Optional[str]:
         """
         Scrape a single news article URL and return cleaned content.
         
-        Uses crawl4ai's AsyncWebCrawler with optimized settings for
-        news article extraction. Returns Markdown format which is
-        cleaner than raw HTML for LLM processing.
+        Uses requests + BeautifulSoup for scraping and converts to Markdown.
         
         Args:
             url: News article URL to scrape
@@ -77,41 +160,43 @@ class NewsArticleCrawler:
         try:
             self._update_progress(f"🌐 Scraping news article: {url}...")
             
-            # Initialize async crawler (crawl4ai 0.8.0 syntax)
-            async with AsyncWebCrawler(verbose=False) as crawler:
-                # Execute crawl
-                result = await crawler.arun(
-                    url=url,
-                    word_count_threshold=10,
-                    exclude_external_links=True,
-                    page_timeout=self.timeout * 1000,
+            # Run blocking requests in executor to avoid blocking event loop
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: requests.get(url, headers=self.headers, timeout=self.timeout)
+            )
+            
+            # Check response status
+            response.raise_for_status()
+            
+            # Parse HTML
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Extract article content
+            content = self._extract_article_content(soup, url)
+            
+            if not content or len(content.strip()) < 100:
+                self._update_progress(
+                    f"⚠️ {url} returned minimal content ({len(content) if content else 0} chars)"
                 )
-                
-                if result.success:
-                    # Extract markdown content (0.8.0 uses .markdown attribute)
-                    content = result.markdown
-                    
-                    if not content or len(content.strip()) < 100:
-                        self._update_progress(
-                            f"⚠️ {url} returned minimal content ({len(content) if content else 0} chars)"
-                        )
-                        return None
-                    
-                    self._update_progress(
-                        f"✅ Scraped article from {url} ({len(content):,} characters)"
-                    )
-                    
-                    return content
-                else:
-                    error_msg = getattr(result, 'error_message', 'Unknown error')
-                    self._update_progress(
-                        f"❌ Failed to scrape {url}: {error_msg}"
-                    )
-                    return None
+                return None
+            
+            self._update_progress(
+                f"✅ Scraped article from {url} ({len(content):,} characters)"
+            )
+            
+            return content
         
-        except asyncio.TimeoutError:
+        except requests.Timeout:
             self._update_progress(
                 f"❌ Timeout scraping {url} (>{self.timeout}s)"
+            )
+            return None
+        
+        except requests.RequestException as e:
+            self._update_progress(
+                f"❌ HTTP error scraping {url}: {str(e)}"
             )
             return None
         
@@ -227,7 +312,6 @@ class NewsArticleCrawler:
             techcrunch.com
         """
         try:
-            from urllib.parse import urlparse
             parsed = urlparse(url)
             domain = parsed.netloc
             
